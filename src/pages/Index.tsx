@@ -5,7 +5,8 @@ import { DashboardMetrics } from "@/components/DashboardMetrics";
 import { InventoryTable } from "@/components/InventoryTable";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { AreaChart, BarChart } from "@/components/ui/chart";
+import { AreaChart } from "@/components/charts/AreaChart";
+import { BarChart } from "@/components/charts/BarChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, Download, Filter, Plus, RefreshCw, Upload } from "lucide-react";
 

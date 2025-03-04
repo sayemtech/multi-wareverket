@@ -1,4 +1,3 @@
-
 import { MapPin, Package, Truck, Users, MoreHorizontal } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -79,8 +78,7 @@ export function LocationCard({
             </div>
             <Progress 
               value={usagePercent} 
-              className="h-2" 
-              indicatorClassName={getProgressColor()}
+              className={`h-2 ${getProgressColor()}`}
             />
             <p className="text-xs text-muted-foreground mt-1">
               {usage.toLocaleString()} of {capacity.toLocaleString()} units used
