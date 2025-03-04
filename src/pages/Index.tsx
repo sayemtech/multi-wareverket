@@ -1,14 +1,28 @@
-
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { DashboardMetrics } from "@/components/DashboardMetrics";
 import { InventoryTable } from "@/components/InventoryTable";
+import { InventoryAlerts } from "@/components/InventoryAlerts";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { LocationSearch } from "@/components/LocationSearch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AreaChart } from "@/components/charts/AreaChart";
 import { BarChart } from "@/components/charts/BarChart";
+import { StockMovementChart } from "@/components/charts/StockMovementChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Download, Filter, Plus, RefreshCw, Upload } from "lucide-react";
+import { toast } from "sonner";
+import { 
+  Clock, 
+  Download, 
+  Filter, 
+  Plus, 
+  RefreshCw, 
+  Upload, 
+  ShoppingCart, 
+  Truck, 
+  PackageSearch 
+} from "lucide-react";
 
 // Sample data for the overview chart
 const overviewData = [
@@ -62,9 +76,55 @@ const categoryData = [
   },
 ];
 
+// Sample data for stock movement
+const stockMovementData = [
+  { date: "Aug 1", incoming: 35, outgoing: 28 },
+  { date: "Aug 2", incoming: 42, outgoing: 30 },
+  { date: "Aug 3", incoming: 25, outgoing: 38 },
+  { date: "Aug 4", incoming: 30, outgoing: 32 },
+  { date: "Aug 5", incoming: 45, outgoing: 25 },
+  { date: "Aug 6", incoming: 52, outgoing: 40 },
+  { date: "Aug 7", incoming: 48, outgoing: 56 },
+];
+
+// Sample alerts data
+const sampleAlerts = [
+  {
+    id: "1",
+    type: "low_stock" as const,
+    message: "Low stock alert",
+    item: "Wireless Headphones",
+    location: "Warehouse A",
+    quantity: 5,
+    timestamp: "10 minutes ago",
+    isRead: false
+  },
+  {
+    id: "2",
+    type: "reorder_needed" as const,
+    message: "Reorder required",
+    item: "USB-C Cable 2m",
+    location: "Warehouse B",
+    quantity: 0,
+    timestamp: "1 hour ago",
+    isRead: false
+  },
+  {
+    id: "3",
+    type: "stock_received" as const,
+    message: "New stock received",
+    item: "Bluetooth Speaker",
+    location: "Warehouse A",
+    quantity: 50,
+    timestamp: "3 hours ago",
+    isRead: true
+  }
+];
+
 const Dashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState(sampleAlerts);
   
   // Format date for display
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -100,6 +160,33 @@ const Dashboard = () => {
     return () => clearTimeout(timer);
   }, []);
   
+  // Handle barcode scanning
+  const handleBarcodeScanned = (code: string) => {
+    toast.success(`Barcode scanned: ${code}`, {
+      description: "Item information retrieved successfully",
+    });
+  };
+  
+  // Handle location search
+  const handleLocationSearch = (query: string) => {
+    toast.info(`Searching for location: ${query}`, {
+      description: "Please wait while we search for matching locations",
+    });
+  };
+  
+  // Handle marking alerts as read
+  const handleMarkAsRead = (id: string) => {
+    setAlerts(alerts.map(alert => 
+      alert.id === id ? { ...alert, isRead: true } : alert
+    ));
+  };
+  
+  // Handle clear all alerts
+  const handleClearAllAlerts = () => {
+    setAlerts([]);
+    toast.success("All alerts cleared");
+  };
+  
   if (loading) {
     return (
       <Layout>
@@ -129,6 +216,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2 mt-4 sm:mt-0">
+            <BarcodeScanner onCodeScanned={handleBarcodeScanned} />
             <Button variant="outline" size="sm">
               <Filter className="h-4 w-4 mr-2" />
               Filter
@@ -144,58 +232,110 @@ const Dashboard = () => {
           </div>
         </div>
         
+        {/* Search & Filters Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <LocationSearch onSearch={handleLocationSearch} className="md:col-span-2" />
+          <div className="flex items-center justify-end space-x-2">
+            <Button variant="outline" size="sm" className="w-full md:w-auto">
+              <Truck className="h-4 w-4 mr-2" />
+              Incoming
+            </Button>
+            <Button variant="outline" size="sm" className="w-full md:w-auto">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Outgoing
+            </Button>
+          </div>
+        </div>
+        
         {/* Metrics Overview */}
         <DashboardMetrics />
         
         {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card rounded-lg border shadow-soft p-4 animate-slide-up delay-100">
-            <h3 className="text-lg font-medium mb-4">Inventory Overview</h3>
-            <AreaChart 
-              data={overviewData}
-              categories={["total"]}
-              index="name"
-              colors={["#3b82f6"]}
-              yAxisWidth={40}
-              showLegend={false}
-              showGridLines={false}
-              className="h-[200px]"
-            />
-            <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-              <span>Shows total inventory items over time</span>
-              <div className="flex space-x-2">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Upload className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Download className="h-3 w-3" />
-                </Button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-card rounded-lg border shadow-soft p-4 animate-slide-up delay-100">
+              <h3 className="text-lg font-medium mb-4">Inventory Overview</h3>
+              <AreaChart 
+                data={overviewData}
+                categories={["total"]}
+                index="name"
+                colors={["#3b82f6"]}
+                yAxisWidth={40}
+                showLegend={false}
+                showGridLines={false}
+                className="h-[200px]"
+              />
+              <div className="mt-2 text-xs text-muted-foreground flex justify-between">
+                <span>Shows total inventory items over time</span>
+                <div className="flex space-x-2">
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Upload className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-card rounded-lg border shadow-soft p-4 animate-slide-up delay-200">
+              <h3 className="text-lg font-medium mb-4">Stock Movement</h3>
+              <StockMovementChart 
+                data={stockMovementData}
+                categories={["incoming", "outgoing"]}
+                index="date"
+                colors={["#22c55e", "#ef4444"]}
+                yAxisWidth={40}
+                showLegend={true}
+                showGridLines={true}
+                className="h-[200px]"
+              />
+              <div className="mt-2 text-xs text-muted-foreground flex justify-between">
+                <span>Incoming vs outgoing stock movement</span>
+                <div className="flex space-x-2">
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Upload className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-lg border shadow-soft p-4 animate-slide-up delay-200">
-            <h3 className="text-lg font-medium mb-4">Inventory by Category</h3>
-            <BarChart 
-              data={categoryData}
-              categories={["total"]}
-              index="name"
-              colors={["#3b82f6"]}
-              yAxisWidth={40}
-              showLegend={false}
-              showGridLines={false}
-              className="h-[200px]"
-            />
-            <div className="mt-2 text-xs text-muted-foreground flex justify-between">
-              <span>Shows inventory distribution by category</span>
-              <div className="flex space-x-2">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Upload className="h-3 w-3" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Download className="h-3 w-3" />
-                </Button>
+          
+          <div className="space-y-6">
+            <div className="bg-card rounded-lg border shadow-soft p-4 animate-slide-up delay-200">
+              <h3 className="text-lg font-medium mb-4">Inventory by Category</h3>
+              <BarChart 
+                data={categoryData}
+                categories={["total"]}
+                index="name"
+                colors={["#3b82f6"]}
+                yAxisWidth={40}
+                showLegend={false}
+                showGridLines={false}
+                className="h-[200px]"
+              />
+              <div className="mt-2 text-xs text-muted-foreground flex justify-between">
+                <span>Shows inventory distribution by category</span>
+                <div className="flex space-x-2">
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Upload className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Download className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </div>
+            
+            <InventoryAlerts 
+              alerts={alerts}
+              onMarkAsRead={handleMarkAsRead}
+              onClearAll={handleClearAllAlerts}
+              className="animate-slide-up delay-300"
+            />
           </div>
         </div>
         
