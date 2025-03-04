@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Building2, ExternalLink, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -37,8 +37,9 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
+import { useToast } from "@/hooks/use-toast";
 
-interface Vendor {
+export interface Vendor {
   id: string;
   name: string;
   contactPerson?: string;
@@ -60,9 +61,25 @@ interface VendorManagementProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   vendor?: Vendor | null;
+  onVendorAdd?: (vendor: Omit<Vendor, 'id'>) => void;
+  onVendorUpdate?: (vendor: Vendor) => void;
+  onViewAllVendors?: () => void;
+  onViewVendorDetails?: (vendor: Vendor) => void;
 }
 
-export function VendorManagement({ vendors = [], className, open, onOpenChange, vendor }: VendorManagementProps) {
+export function VendorManagement({ 
+  vendors = [], 
+  className, 
+  open, 
+  onOpenChange, 
+  vendor, 
+  onVendorAdd, 
+  onVendorUpdate,
+  onViewAllVendors,
+  onViewVendorDetails
+}: VendorManagementProps) {
+  const { toast } = useToast();
+  
   // Form setup for vendor dialog
   const form = useForm({
     defaultValues: {
@@ -90,9 +107,58 @@ export function VendorManagement({ vendors = [], className, open, onOpenChange, 
   };
 
   const onSubmit = (data: any) => {
-    console.log("Vendor data submitted:", data);
+    if (vendor) {
+      // Update existing vendor
+      const updatedVendor = {
+        ...vendor,
+        name: data.name,
+        contact: data.contact,
+        contactPerson: data.contact, // Keep both fields in sync
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        status: data.status,
+      };
+      
+      if (onVendorUpdate) {
+        onVendorUpdate(updatedVendor);
+        toast({
+          title: "Vendor Updated",
+          description: `${data.name} has been successfully updated.`,
+        });
+      }
+    } else {
+      // Add new vendor
+      const newVendor = {
+        name: data.name,
+        contact: data.contact,
+        contactPerson: data.contact,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        status: data.status,
+        lastOrder: "Never",
+        products: [],
+        productsSupplied: 0,
+      };
+      
+      if (onVendorAdd) {
+        onVendorAdd(newVendor);
+        toast({
+          title: "Vendor Added",
+          description: `${data.name} has been successfully added.`,
+        });
+      }
+    }
+    
     if (onOpenChange) {
       onOpenChange(false);
+    }
+  };
+
+  const handleViewDetails = (vendor: Vendor) => {
+    if (onViewVendorDetails) {
+      onViewVendorDetails(vendor);
     }
   };
 
@@ -227,7 +293,7 @@ export function VendorManagement({ vendors = [], className, open, onOpenChange, 
             <Building2 className="h-5 w-5 text-muted-foreground mr-2" />
             <h3 className="text-lg font-medium">Vendor Management</h3>
           </div>
-          <Button size="sm">
+          <Button size="sm" onClick={() => onOpenChange && onOpenChange(true)}>
             Add Vendor
           </Button>
         </div>
@@ -270,7 +336,12 @@ export function VendorManagement({ vendors = [], className, open, onOpenChange, 
                       {vendor.lastOrder}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleViewDetails(vendor)}
+                      >
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -289,7 +360,11 @@ export function VendorManagement({ vendors = [], className, open, onOpenChange, 
       </CardContent>
       
       <CardFooter className="p-2 bg-muted/30 justify-center">
-        <Button variant="link" size="sm">
+        <Button 
+          variant="link" 
+          size="sm"
+          onClick={onViewAllVendors}
+        >
           View All Vendors
         </Button>
       </CardFooter>
