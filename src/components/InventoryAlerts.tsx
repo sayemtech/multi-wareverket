@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { 
   AlertTriangle, 
   ArrowDown, 
@@ -12,31 +12,40 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-interface AlertItem {
-  id: string;
-  type: "low_stock" | "reorder_needed" | "stock_received" | "expiring_soon";
-  message: string;
-  item: string;
-  location: string;
-  quantity?: number;
-  timestamp: string;
-  isRead: boolean;
-}
+import { AlertItem, getAlerts, markAlertAsRead, clearAllAlerts, deleteAlert } from "@/lib/data/alertsData";
 
 interface InventoryAlertsProps {
-  alerts: AlertItem[];
-  onMarkAsRead: (id: string) => void;
-  onClearAll: () => void;
   className?: string;
 }
 
-export function InventoryAlerts({ 
-  alerts, 
-  onMarkAsRead, 
-  onClearAll,
-  className 
-}: InventoryAlertsProps) {
+export function InventoryAlerts({ className }: InventoryAlertsProps) {
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  
+  useEffect(() => {
+    // Load alerts from localStorage
+    loadAlerts();
+  }, []);
+  
+  const loadAlerts = () => {
+    const alertsData = getAlerts();
+    setAlerts(alertsData);
+  };
+  
+  const handleMarkAsRead = (id: string) => {
+    markAlertAsRead(id);
+    loadAlerts();
+  };
+  
+  const handleClearAlert = (id: string) => {
+    deleteAlert(id);
+    loadAlerts();
+  };
+  
+  const handleClearAll = () => {
+    clearAllAlerts();
+    loadAlerts();
+  };
+  
   const unreadCount = alerts.filter(alert => !alert.isRead).length;
   
   const getAlertIcon = (type: AlertItem["type"]) => {
@@ -68,7 +77,7 @@ export function InventoryAlerts({
         <Button 
           variant="ghost" 
           size="sm" 
-          onClick={onClearAll}
+          onClick={handleClearAll}
           disabled={alerts.length === 0}
         >
           Clear All
@@ -110,7 +119,7 @@ export function InventoryAlerts({
                   variant="ghost" 
                   size="icon" 
                   className="h-8 w-8 shrink-0" 
-                  onClick={() => onMarkAsRead(alert.id)}
+                  onClick={() => handleClearAlert(alert.id)}
                 >
                   <X className="h-4 w-4" />
                 </Button>

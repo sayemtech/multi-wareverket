@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -7,7 +7,10 @@ import {
   ArrowUpDown,
   ChevronDown,
   MoreHorizontal,
-  Filter
+  Filter,
+  Plus,
+  Pencil,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -28,83 +31,92 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
-interface InventoryItem {
-  id: string;
-  sku: string;
-  name: string;
-  location: string;
-  quantity: number;
-  status: "In Stock" | "Low Stock" | "Out of Stock";
-  lastUpdated: string;
-}
-
-// Sample inventory data
-const inventoryData: InventoryItem[] = [
-  {
-    id: "1",
-    sku: "PRD-001",
-    name: "Wireless Headphones",
-    location: "Warehouse A",
-    quantity: 145,
-    status: "In Stock",
-    lastUpdated: "2023-05-12"
-  },
-  {
-    id: "2",
-    sku: "PRD-002",
-    name: "USB-C Cable 2m",
-    location: "Warehouse B",
-    quantity: 28,
-    status: "Low Stock",
-    lastUpdated: "2023-05-10"
-  },
-  {
-    id: "3",
-    sku: "PRD-003",
-    name: "Bluetooth Speaker",
-    location: "Warehouse A",
-    quantity: 56,
-    status: "In Stock",
-    lastUpdated: "2023-05-11"
-  },
-  {
-    id: "4",
-    sku: "PRD-004",
-    name: "Laptop Stand",
-    location: "Warehouse C",
-    quantity: 0,
-    status: "Out of Stock",
-    lastUpdated: "2023-05-09"
-  },
-  {
-    id: "5",
-    sku: "PRD-005",
-    name: "Wireless Mouse",
-    location: "Warehouse A",
-    quantity: 82,
-    status: "In Stock",
-    lastUpdated: "2023-05-12"
-  },
-  {
-    id: "6",
-    sku: "PRD-006",
-    name: "HDMI Adapter",
-    location: "Warehouse B",
-    quantity: 18,
-    status: "Low Stock",
-    lastUpdated: "2023-05-10"
-  }
-];
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { UpdateInventoryForm } from "./UpdateInventoryForm";
+import { 
+  InventoryItem, 
+  getInventoryItems, 
+  deleteInventoryItem, 
+  updateInventoryQuantity 
+} from "@/lib/data/inventoryData";
 
 export function InventoryTable() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [filterLocation, setFilterLocation] = useState<string | null>(null);
   
-  const filteredData = inventoryData.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Get unique locations from inventory data
+  const uniqueLocations = [...new Set(inventoryData.map(item => item.location))];
+  
+  useEffect(() => {
+    // Load inventory data from localStorage
+    loadInventoryData();
+  }, []);
+  
+  const loadInventoryData = () => {
+    const data = getInventoryItems();
+    setInventoryData(data);
+  };
+  
+  // Filter inventory data based on search query and filters
+  const filteredData = inventoryData.filter(item => {
+    const matchesSearch = 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.location.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = filterStatus ? item.status === filterStatus : true;
+    const matchesLocation = filterLocation ? item.location === filterLocation : true;
+    
+    return matchesSearch && matchesStatus && matchesLocation;
+  });
+  
+  // Handle item deletion
+  const handleDeleteItem = (id: string) => {
+    try {
+      const result = deleteInventoryItem(id);
+      if (result) {
+        toast.success("Item deleted successfully");
+        loadInventoryData();
+      } else {
+        toast.error("Failed to delete item");
+      }
+      setConfirmDelete(null);
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      toast.error("An error occurred while deleting the item");
+    }
+  };
+  
+  // Handle form submission success
+  const handleFormSuccess = () => {
+    loadInventoryData();
+    setIsAddDialogOpen(false);
+    setIsEditDialogOpen(false);
+  };
   
   // Function to render status badge with appropriate color and icon
   const renderStatus = (status: InventoryItem["status"]) => {
@@ -153,24 +165,53 @@ export function InventoryTable() {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>All Items</DropdownMenuItem>
-              <DropdownMenuItem>In Stock</DropdownMenuItem>
-              <DropdownMenuItem>Low Stock</DropdownMenuItem>
-              <DropdownMenuItem>Out of Stock</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterStatus(null)}>
+                All Items
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterStatus("In Stock")}>
+                In Stock
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterStatus("Low Stock")}>
+                Low Stock
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterStatus("Out of Stock")}>
+                Out of Stock
+              </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Filter by Location</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>All Locations</DropdownMenuItem>
-              <DropdownMenuItem>Warehouse A</DropdownMenuItem>
-              <DropdownMenuItem>Warehouse B</DropdownMenuItem>
-              <DropdownMenuItem>Warehouse C</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterLocation(null)}>
+                All Locations
+              </DropdownMenuItem>
+              {uniqueLocations.map(location => (
+                <DropdownMenuItem 
+                  key={location} 
+                  onClick={() => setFilterLocation(location)}
+                >
+                  {location}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button variant="default" size="sm" className="h-9">
-            Export
-          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="default" size="sm" className="h-9">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add Inventory Item</DialogTitle>
+              </DialogHeader>
+              <UpdateInventoryForm 
+                onSuccess={handleFormSuccess}
+                onCancel={() => setIsAddDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       
@@ -184,7 +225,7 @@ export function InventoryTable() {
               <TableHead className="text-right">Quantity</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last Updated</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -198,22 +239,73 @@ export function InventoryTable() {
                   <TableCell>{renderStatus(item.status)}</TableCell>
                   <TableCell className="text-muted-foreground">{item.lastUpdated}</TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Update Stock</DropdownMenuItem>
-                        <DropdownMenuItem>Move Location</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          Remove Item
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center justify-end">
+                      <Dialog open={isEditDialogOpen && selectedItem?.id === item.id} onOpenChange={(open) => {
+                        if (!open) setSelectedItem(null);
+                        setIsEditDialogOpen(open);
+                      }}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => setSelectedItem(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px]">
+                          <DialogHeader>
+                            <DialogTitle>Edit Inventory Item</DialogTitle>
+                          </DialogHeader>
+                          {selectedItem && (
+                            <UpdateInventoryForm 
+                              item={selectedItem}
+                              onSuccess={handleFormSuccess}
+                              onCancel={() => {
+                                setIsEditDialogOpen(false);
+                                setSelectedItem(null);
+                              }}
+                            />
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                      
+                      <AlertDialog 
+                        open={confirmDelete === item.id} 
+                        onOpenChange={(open) => {
+                          if (!open) setConfirmDelete(null);
+                        }}
+                      >
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setConfirmDelete(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {item.name}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={() => handleDeleteItem(item.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
