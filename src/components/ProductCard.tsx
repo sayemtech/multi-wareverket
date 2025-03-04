@@ -1,10 +1,10 @@
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import React from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { EyeIcon, Edit, Trash2, CheckCircle } from "lucide-react";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/Badge";
+import { Package, AlertTriangle } from "lucide-react";
 
 interface ProductCardProps {
   id: string;
@@ -25,69 +25,68 @@ export function ProductCard({
   category,
   price,
   stock,
-  className,
+  className = "",
 }: ProductCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  const stockStatus = stock > 20
-    ? { label: "In Stock", color: "bg-green-100 text-green-800 hover:bg-green-200" }
-    : stock > 0
-      ? { label: "Low Stock", color: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" }
-      : { label: "Out of Stock", color: "bg-red-100 text-red-800 hover:bg-red-200" };
+  const isOutOfStock = stock === 0;
+  const isLowStock = stock > 0 && stock < 20;
 
   return (
-    <Card 
-      className={cn(
-        "overflow-hidden transition-all duration-300 group hover:shadow-soft",
-        className
-      )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="relative pt-[75%] overflow-hidden bg-secondary">
-        <img
-          src={imageUrl || 'https://placehold.co/300x200/e2e8f0/a0aec0?text=Product+Image'}
-          alt={name}
-          className={cn(
-            "absolute inset-0 w-full h-full object-cover transition-transform duration-300", 
-            isHovered ? "scale-105" : "scale-100"
+    <Card className={`overflow-hidden ${className}`}>
+      <Link to={`/products/${id}`} className="block">
+        <div className={`aspect-[4/3] relative bg-muted ${className.includes('flex') ? 'w-1/3' : 'w-full'}`}>
+          <img
+            src={imageUrl}
+            alt={name}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {isOutOfStock && (
+            <div className="absolute top-2 right-2">
+              <Badge variant="error" className="px-2 py-1">
+                Out of Stock
+              </Badge>
+            </div>
           )}
-        />
-        <div className={cn(
-          "absolute inset-0 bg-black/40 flex items-center justify-center gap-2 transition-opacity duration-300",
-          isHovered ? "opacity-100" : "opacity-0"
-        )}>
-          <Button size="sm" variant="secondary" className="h-8 px-2">
-            <EyeIcon className="h-3.5 w-3.5 mr-1" />
-            View
-          </Button>
-          <Button size="sm" variant="secondary" className="h-8 px-2">
-            <Edit className="h-3.5 w-3.5 mr-1" />
-            Edit
-          </Button>
+          {isLowStock && (
+            <div className="absolute top-2 right-2">
+              <Badge variant="warning" className="px-2 py-1">
+                Low Stock
+              </Badge>
+            </div>
+          )}
         </div>
-        <Badge className="absolute top-2 left-2">{category}</Badge>
-      </div>
+      </Link>
       
-      <CardContent className="p-4">
-        <div className="space-y-1">
-          <h3 className="font-medium text-sm truncate">{name}</h3>
-          <p className="text-xs text-muted-foreground">SKU: {sku}</p>
-        </div>
-        <div className="mt-2 flex items-center justify-between">
-          <p className="font-semibold">${price.toFixed(2)}</p>
-          <Badge className={stockStatus.color}>
-            {stock > 0 && <CheckCircle className="mr-1 h-3 w-3" />}
-            {stockStatus.label}
-          </Badge>
-        </div>
+      <CardContent className={`p-4 ${className.includes('flex') ? 'flex-1' : ''}`}>
+        <Link to={`/products/${id}`} className="block">
+          <h3 className="font-medium truncate">{name}</h3>
+          <p className="text-sm text-muted-foreground mb-2">SKU: {sku}</p>
+          <div className="flex justify-between items-center">
+            <span className="font-bold">${price.toFixed(2)}</span>
+            <Badge variant="secondary" className="text-xs">
+              {category}
+            </Badge>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex items-center">
+              {isOutOfStock ? (
+                <AlertTriangle className="h-4 w-4 text-destructive mr-1" />
+              ) : (
+                <Package className="h-4 w-4 text-green-500 mr-1" />
+              )}
+              <span className={`text-sm ${isOutOfStock ? 'text-destructive' : 'text-green-500'}`}>
+                {isOutOfStock ? 'Out of stock' : `${stock} in stock`}
+              </span>
+            </div>
+          </div>
+        </Link>
       </CardContent>
       
-      <CardFooter className="p-4 pt-0 flex justify-between">
-        <p className="text-xs text-muted-foreground">{stock} units available</p>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100">
-          <Trash2 className="h-4 w-4" />
-        </Button>
+      <CardFooter className="p-4 pt-0 gap-2">
+        <Link to={`/products/${id}`} className="w-full">
+          <Button variant="outline" size="sm" className="w-full">
+            View Details
+          </Button>
+        </Link>
       </CardFooter>
     </Card>
   );

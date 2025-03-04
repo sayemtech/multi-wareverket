@@ -11,7 +11,9 @@ import {
   X,
   Search,
   Bell,
-  User
+  User,
+  FileText,
+  Truck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,9 @@ const navItems = [
   { name: "Inventory", path: "/inventory", icon: Boxes },
   { name: "Products", path: "/products", icon: Package },
   { name: "Locations", path: "/locations", icon: Map },
+  { name: "Transfer", path: "/transfer", icon: Truck },
+  { name: "Reports", path: "/reports", icon: FileText },
+  { name: "Vendors", path: "/vendors", icon: Truck },
   { name: "Settings", path: "/settings", icon: Settings },
 ];
 
