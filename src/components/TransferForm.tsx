@@ -140,7 +140,22 @@ export function TransferForm({ transfer, onSuccess, onCancel }: TransferFormProp
     try {
       if (transfer) {
         // Update existing transfer
-        updateTransfer(transfer.id, data);
+        // Ensure data conforms to the expected type
+        const validUpdateData: Partial<Omit<Transfer, "id" | "createdAt">> = {
+          sourceLocationId: data.sourceLocationId,
+          sourceLocationName: data.sourceLocationName,
+          destinationLocationId: data.destinationLocationId,
+          destinationLocationName: data.destinationLocationName,
+          status: data.status,
+          notes: data.notes,
+          items: data.items.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity
+          }))
+        };
+        
+        updateTransfer(transfer.id, validUpdateData);
         
         toast({
           title: "Transfer updated",
@@ -148,7 +163,22 @@ export function TransferForm({ transfer, onSuccess, onCancel }: TransferFormProp
         });
       } else {
         // Add new transfer
-        addTransfer(data);
+        // Ensure data conforms to the expected type
+        const validNewData: Omit<Transfer, "id" | "createdAt" | "updatedAt"> = {
+          sourceLocationId: data.sourceLocationId,
+          sourceLocationName: data.sourceLocationName,
+          destinationLocationId: data.destinationLocationId,
+          destinationLocationName: data.destinationLocationName,
+          status: data.status,
+          notes: data.notes,
+          items: data.items.map(item => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity
+          }))
+        };
+        
+        addTransfer(validNewData);
         
         toast({
           title: "Transfer created",

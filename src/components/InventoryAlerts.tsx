@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { 
   AlertTriangle, 
@@ -16,36 +15,64 @@ import { AlertItem, getAlerts, markAlertAsRead, clearAllAlerts, deleteAlert } fr
 
 interface InventoryAlertsProps {
   className?: string;
+  alerts?: AlertItem[];
+  onMarkAsRead?: (id: string) => void;
+  onClearAll?: () => void;
+  onClearAlert?: (id: string) => void;
 }
 
-export function InventoryAlerts({ className }: InventoryAlertsProps) {
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+export function InventoryAlerts({ 
+  className,
+  alerts: externalAlerts,
+  onMarkAsRead: externalMarkAsRead,
+  onClearAll: externalClearAll,
+  onClearAlert: externalClearAlert
+}: InventoryAlertsProps) {
+  const [localAlerts, setLocalAlerts] = useState<AlertItem[]>([]);
   
   useEffect(() => {
-    // Load alerts from localStorage
-    loadAlerts();
-  }, []);
+    // If external alerts are provided, use them
+    // Otherwise, load alerts from localStorage
+    if (externalAlerts) {
+      setLocalAlerts(externalAlerts);
+    } else {
+      loadAlerts();
+    }
+  }, [externalAlerts]);
   
   const loadAlerts = () => {
     const alertsData = getAlerts();
-    setAlerts(alertsData);
+    setLocalAlerts(alertsData);
   };
   
   const handleMarkAsRead = (id: string) => {
-    markAlertAsRead(id);
-    loadAlerts();
+    if (externalMarkAsRead) {
+      externalMarkAsRead(id);
+    } else {
+      markAlertAsRead(id);
+      loadAlerts();
+    }
   };
   
   const handleClearAlert = (id: string) => {
-    deleteAlert(id);
-    loadAlerts();
+    if (externalClearAlert) {
+      externalClearAlert(id);
+    } else {
+      deleteAlert(id);
+      loadAlerts();
+    }
   };
   
   const handleClearAll = () => {
-    clearAllAlerts();
-    loadAlerts();
+    if (externalClearAll) {
+      externalClearAll();
+    } else {
+      clearAllAlerts();
+      loadAlerts();
+    }
   };
   
+  const alerts = localAlerts;
   const unreadCount = alerts.filter(alert => !alert.isRead).length;
   
   const getAlertIcon = (type: AlertItem["type"]) => {

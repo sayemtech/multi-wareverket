@@ -70,7 +70,7 @@ export function LocationForm({ location, onSuccess, onCancel }: LocationFormProp
     try {
       if (location) {
         // Update existing location
-        updateLocation(location.id, data);
+        updateLocation(location.id, data as Omit<Location, "id" | "createdAt" | "updatedAt">);
         
         toast({
           title: "Location updated",
@@ -78,7 +78,7 @@ export function LocationForm({ location, onSuccess, onCancel }: LocationFormProp
         });
       } else {
         // Add new location
-        addLocation(data);
+        addLocation(data as Omit<Location, "id" | "createdAt" | "updatedAt">);
         
         toast({
           title: "Location added",
