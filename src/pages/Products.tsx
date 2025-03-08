@@ -163,16 +163,38 @@ const Products = () => {
 
   const onSubmit = (data: ProductFormValues) => {
     try {
+      // Ensure dimensions is properly typed with required fields if present
+      const productData: Omit<Product, "id" | "createdAt" | "updatedAt"> = {
+        name: data.name,
+        sku: data.sku,
+        description: data.description,
+        category: data.category,
+        price: data.price,
+        cost: data.cost,
+        imageUrl: data.imageUrl || "/placeholder.svg",
+        barcode: data.barcode,
+        weight: data.weight,
+      };
+      
+      // Only add dimensions if all values are present
+      if (data.dimensions) {
+        productData.dimensions = {
+          length: data.dimensions.length,
+          width: data.dimensions.width,
+          height: data.dimensions.height,
+        };
+      }
+      
       if (currentProduct) {
         // Update existing product
-        updateProduct(currentProduct.id, data);
+        updateProduct(currentProduct.id, productData);
         toast({
           title: "Product updated",
           description: `${data.name} has been updated`,
         });
       } else {
         // Add new product
-        addProduct(data);
+        addProduct(productData);
         toast({
           title: "Product added",
           description: `${data.name} has been added to your inventory`,

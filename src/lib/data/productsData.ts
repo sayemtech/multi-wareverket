@@ -112,7 +112,7 @@ export function addProduct(product: Omit<Product, "id" | "createdAt" | "updatedA
 }
 
 // Update an existing product
-export function updateProduct(id: string, updates: Partial<Omit<Product, "id" | "createdAt">>): Product | null {
+export function updateProduct(id: string, updates: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>): Product | null {
   const products = getProducts();
   const index = products.findIndex(p => p.id === id);
   
