@@ -13,16 +13,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { ArrowRight, ClipboardCheck, EllipsisVertical, FileEdit, Trash2 } from "lucide-react";
-import { getAudits } from "@/lib/data/auditsData";
+import { Audit, AuditStatus, getAudits } from "@/lib/data/auditsData";
 import { useNavigate } from "react-router-dom";
 
 interface AuditListTableProps {
-  status: "scheduled" | "inProgress" | "completed" | "all";
+  status: AuditStatus | "all";
 }
 
 export function AuditListTable({ status }: AuditListTableProps) {
   const navigate = useNavigate();
-  const [audits, setAudits] = useState(getAudits().filter(audit => 
+  const [audits, setAudits] = useState<Audit[]>(getAudits().filter(audit => 
     status === "all" ? true : audit.status === status
   ));
   
@@ -30,7 +30,7 @@ export function AuditListTable({ status }: AuditListTableProps) {
     // Update audit status to in progress (would be handled by a real backend)
     const newAudits = audits.map(audit => {
       if (audit.id === id) {
-        return { ...audit, status: "inProgress" };
+        return { ...audit, status: "inProgress" as AuditStatus };
       }
       return audit;
     });
@@ -43,7 +43,7 @@ export function AuditListTable({ status }: AuditListTableProps) {
     // Update audit status to completed (would be handled by a real backend)
     const newAudits = audits.map(audit => {
       if (audit.id === id) {
-        return { ...audit, status: "completed", completedAt: new Date().toISOString() };
+        return { ...audit, status: "completed" as AuditStatus, completedAt: new Date().toISOString() };
       }
       return audit;
     });
@@ -59,7 +59,7 @@ export function AuditListTable({ status }: AuditListTableProps) {
     toast.success("Audit deleted successfully");
   };
   
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: AuditStatus) => {
     switch(status) {
       case "scheduled":
         return <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">Scheduled</Badge>;
@@ -67,6 +67,8 @@ export function AuditListTable({ status }: AuditListTableProps) {
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-600 border-yellow-200">In Progress</Badge>;
       case "completed":
         return <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">Completed</Badge>;
+      case "cancelled":
+        return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">Cancelled</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }

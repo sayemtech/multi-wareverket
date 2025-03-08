@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { addAudit } from "@/lib/data/auditsData";
+import { addAudit, AuditType } from "@/lib/data/auditsData";
 import { toast } from "sonner";
 import { DialogClose } from "@/components/ui/dialog";
 import { getLocations } from "@/lib/data/locationsData";
@@ -13,7 +12,7 @@ import { getLocations } from "@/lib/data/locationsData";
 export function NewAuditForm() {
   const [auditData, setAuditData] = useState({
     location: "",
-    type: "full",
+    type: "full" as AuditType,
     scheduledDate: "",
     assignedTo: "",
     productCategories: [] as string[],
@@ -36,7 +35,7 @@ export function NewAuditForm() {
     const id = `AUD-${Math.floor(Math.random() * 10000)}-${new Date().getFullYear()}`;
     
     // Add the new audit
-    const newAudit = {
+    addAudit({
       id,
       location: auditData.location,
       type: auditData.type,
@@ -44,17 +43,14 @@ export function NewAuditForm() {
       assignedTo: auditData.assignedTo,
       productCategories: auditData.productCategories,
       notes: auditData.notes,
-      status: "scheduled",
-      createdAt: new Date().toISOString(),
-    };
+    });
     
-    addAudit(newAudit);
     toast.success("Audit scheduled successfully");
     
     // Reset form (in a real implementation, this would close the dialog)
     setAuditData({
       location: "",
-      type: "full",
+      type: "full" as AuditType,
       scheduledDate: "",
       assignedTo: "",
       productCategories: [],
@@ -106,7 +102,7 @@ export function NewAuditForm() {
             <Label htmlFor="audit-type">Audit Type</Label>
             <Select 
               value={auditData.type}
-              onValueChange={(value) => setAuditData({...auditData, type: value})}
+              onValueChange={(value) => setAuditData({...auditData, type: value as AuditType})}
             >
               <SelectTrigger id="audit-type">
                 <SelectValue placeholder="Select type" />

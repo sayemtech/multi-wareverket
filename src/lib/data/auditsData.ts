@@ -1,5 +1,4 @@
-
-import { getLSItem, setLSItem } from "../localStorage";
+import { getLocalStorageData, setLocalStorageData } from "../localStorage";
 
 export type AuditStatus = "scheduled" | "inProgress" | "completed" | "cancelled";
 export type AuditType = "full" | "partial" | "spot" | "cycle";
@@ -110,13 +109,13 @@ const initialAudits: Audit[] = [
 
 // Get audits from localStorage or use initial data
 export const getAudits = (): Audit[] => {
-  const audits = getLSItem("audits");
-  return audits ? JSON.parse(audits) : initialAudits;
+  const audits = getLocalStorageData("audits", initialAudits);
+  return audits;
 };
 
 // Save audits to localStorage
 export const saveAudits = (audits: Audit[]) => {
-  setLSItem("audits", JSON.stringify(audits));
+  setLocalStorageData("audits", audits);
   return audits;
 };
 
