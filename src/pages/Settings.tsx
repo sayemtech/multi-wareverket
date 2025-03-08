@@ -22,7 +22,12 @@ import {
   Upload, 
   User, 
   UserCog, 
-  Users 
+  Users,
+  Video,
+  VideoOff,
+  Link,
+  Calendar,
+  Plus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { downloadBackup, restoreFromBackup } from "@/lib/backupRestore";
@@ -33,9 +38,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose
+  DialogClose,
+  DialogTrigger
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { createMeeting, getMeetings, joinMeeting, cancelMeeting, Meeting } from "@/lib/meetings";
 
 const Settings = () => {
   const [profile, setProfile] = useState({
@@ -48,6 +56,14 @@ const Settings = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
+  const [newMeeting, setNewMeeting] = useState({
+    title: "",
+    scheduledFor: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    participants: []
+  });
+  const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
+  const [participantEmail, setParticipantEmail] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -169,6 +185,134 @@ const Settings = () => {
     }
   };
 
+  const handleCreateMeeting = () => {
+    if (!newMeeting.title) {
+      toast({
+        title: "Meeting title required",
+        description: "Please enter a title for your meeting",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const meeting = createMeeting({
+        title: newMeeting.title,
+        scheduledFor: newMeeting.scheduledFor,
+        createdBy: profile.email,
+        participants: [...newMeeting.participants]
+      });
+
+      // Reset form
+      setNewMeeting({
+        title: "",
+        scheduledFor: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        participants: []
+      });
+
+      // Update meetings list
+      setMeetings(getMeetings());
+      setIsCreateMeetingOpen(false);
+
+      toast({
+        title: "Meeting created",
+        description: "Your meeting has been scheduled successfully"
+      });
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      toast({
+        title: "Failed to create meeting",
+        description: "There was an error creating your meeting",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleJoinMeeting = (id: string) => {
+    const success = joinMeeting(id);
+    
+    if (success) {
+      toast({
+        title: "Joining meeting",
+        description: "Connecting to virtual meeting room..."
+      });
+      // Update meetings list to reflect status change
+      setMeetings(getMeetings());
+    } else {
+      toast({
+        title: "Failed to join meeting",
+        description: "The meeting could not be found or is no longer available",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCancelMeeting = (id: string) => {
+    const success = cancelMeeting(id);
+    
+    if (success) {
+      toast({
+        title: "Meeting cancelled",
+        description: "The meeting has been cancelled"
+      });
+      // Update meetings list
+      setMeetings(getMeetings());
+    } else {
+      toast({
+        title: "Failed to cancel meeting",
+        description: "There was an error cancelling the meeting",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddParticipant = () => {
+    if (!participantEmail) return;
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(participantEmail)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (newMeeting.participants.includes(participantEmail)) {
+      toast({
+        title: "Duplicate participant",
+        description: "This participant is already added to the meeting",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setNewMeeting({
+      ...newMeeting,
+      participants: [...newMeeting.participants, participantEmail]
+    });
+    
+    setParticipantEmail("");
+  };
+
+  const handleRemoveParticipant = (email: string) => {
+    setNewMeeting({
+      ...newMeeting,
+      participants: newMeeting.participants.filter(p => p !== email)
+    });
+  };
+
+  const copyMeetingLink = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "Link copied",
+        description: "Meeting link copied to clipboard"
+      });
+    });
+  };
+
   return (
     <Layout>
       <div className="p-6 space-y-6 max-w-3xl mx-auto">
@@ -217,6 +361,13 @@ const Settings = () => {
             >
               <Archive className="h-4 w-4 mr-2" />
               Backup & Restore
+            </TabsTrigger>
+            <TabsTrigger 
+              value="meetings" 
+              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
+            >
+              <Video className="h-4 w-4 mr-2" />
+              Meetings
             </TabsTrigger>
           </TabsList>
           
@@ -725,6 +876,169 @@ const Settings = () => {
               </div>
             </div>
           </TabsContent>
+
+          {/* Meetings Settings */}
+          <TabsContent value="meetings" className="mt-6 space-y-6">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Virtual Meetings</h3>
+                <Dialog open={isCreateMeetingOpen} onOpenChange={setIsCreateMeetingOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Meeting
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Create New Meeting</DialogTitle>
+                      <DialogDescription>
+                        Schedule a virtual meeting with your team
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="meeting-title">Meeting Title</Label>
+                        <Input 
+                          id="meeting-title" 
+                          placeholder="Quarterly Inventory Review" 
+                          value={newMeeting.title}
+                          onChange={(e) => setNewMeeting({...newMeeting, title: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="meeting-date">Date & Time</Label>
+                        <Input 
+                          id="meeting-date" 
+                          type="datetime-local" 
+                          value={newMeeting.scheduledFor}
+                          onChange={(e) => setNewMeeting({...newMeeting, scheduledFor: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Participants</Label>
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="participant@example.com" 
+                            value={participantEmail}
+                            onChange={(e) => setParticipantEmail(e.target.value)}
+                          />
+                          <Button type="button" onClick={handleAddParticipant} variant="outline">
+                            Add
+                          </Button>
+                        </div>
+                        {newMeeting.participants.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {newMeeting.participants.map((email) => (
+                              <div key={email} className="flex items-center justify-between bg-muted p-2 rounded-md">
+                                <span className="text-sm">{email}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleRemoveParticipant(email)}
+                                >
+                                  &times;
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsCreateMeetingOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleCreateMeeting}>
+                        Create Meeting
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                Schedule and manage virtual meetings with your team members
+              </p>
+
+              <div className="space-y-4">
+                {meetings.length === 0 ? (
+                  <div className="p-8 text-center border rounded-lg">
+                    <Video className="h-8 w-8 mx-auto text-muted-foreground mb-4" />
+                    <h4 className="text-lg font-medium mb-2">No meetings scheduled</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create your first virtual meeting to collaborate with your team
+                    </p>
+                    <Button onClick={() => setIsCreateMeetingOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Meeting
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {meetings.map((meeting) => (
+                      <div 
+                        key={meeting.id} 
+                        className={`p-4 border rounded-lg ${meeting.status === 'cancelled' ? 'opacity-60' : ''}`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-lg">{meeting.title}</h4>
+                              <Badge variant={
+                                meeting.status === 'scheduled' ? 'outline' : 
+                                meeting.status === 'active' ? 'default' : 
+                                meeting.status === 'completed' ? 'secondary' : 'destructive'
+                              }>
+                                {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                              {new Date(meeting.scheduledFor).toLocaleString()}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {meeting.participants.length} participant{meeting.participants.length !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 ml-auto">
+                            {meeting.status !== 'cancelled' && meeting.status !== 'completed' && (
+                              <>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleJoinMeeting(meeting.id)}
+                                  className="whitespace-nowrap"
+                                >
+                                  <Video className="h-4 w-4 mr-2" />
+                                  Join
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => copyMeetingLink(meeting.joinUrl)}
+                                >
+                                  <Link className="h-4 w-4 mr-2" />
+                                  Copy Link
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCancelMeeting(meeting.id)}
+                                >
+                                  <VideoOff className="h-4 w-4 mr-2" />
+                                  Cancel
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
       
@@ -768,3 +1082,4 @@ const Settings = () => {
 };
 
 export default Settings;
+
