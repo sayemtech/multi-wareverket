@@ -14,7 +14,8 @@ import {
   User,
   FileText,
   Truck,
-  LogOut
+  LogOut,
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const navItems = [
   { name: "Products", path: "/products", icon: Package },
   { name: "Locations", path: "/locations", icon: Map },
   { name: "Transfer", path: "/transfer", icon: Truck },
+  { name: "Audit", path: "/audit", icon: ClipboardCheck },
   { name: "Reports", path: "/reports", icon: FileText },
   { name: "Vendors", path: "/vendors", icon: Truck },
   { name: "Settings", path: "/settings", icon: Settings },

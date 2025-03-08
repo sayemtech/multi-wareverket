@@ -13,6 +13,8 @@ import Reports from "./pages/Reports";
 import Vendors from "./pages/Vendors";
 import Settings from "./pages/Settings";
 import Transfer from "./pages/Transfer";
+import Audit from "./pages/Audit";
+import AuditDetail from "./pages/AuditDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,8 @@ const App = () => (
           <Route path="/reports" element={<Reports />} />
           <Route path="/vendors" element={<Vendors />} />
           <Route path="/transfer" element={<Transfer />} />
+          <Route path="/audit" element={<Audit />} />
+          <Route path="/audit/:id" element={<AuditDetail />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
