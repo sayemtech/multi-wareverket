@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +8,34 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Camera, Key, Lock, LogOut, Mail, Save, Shield, User, UserCog, Users } from "lucide-react";
+import { 
+  Archive, 
+  ArchiveRestore, 
+  Bell, 
+  Camera, 
+  Download, 
+  Key, 
+  Lock, 
+  LogOut, 
+  Save, 
+  Shield, 
+  Upload, 
+  User, 
+  UserCog, 
+  Users 
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { downloadBackup, restoreFromBackup } from "@/lib/backupRestore";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const Settings = () => {
   const [profile, setProfile] = useState({
@@ -22,6 +47,8 @@ const Settings = () => {
   });
   
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleProfileUpdate = (e: React.FormEvent) => {
@@ -57,7 +84,6 @@ const Settings = () => {
   };
   
   const handleAvatarUpload = () => {
-    // Simulate file upload
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
@@ -66,6 +92,81 @@ const Settings = () => {
         description: "Your profile picture has been updated successfully."
       });
     }, 1000);
+  };
+
+  const handleBackup = () => {
+    setIsLoading(true);
+    
+    try {
+      const success = downloadBackup();
+      
+      if (success) {
+        toast({
+          title: "Backup created successfully",
+          description: "Your data has been backed up to a file"
+        });
+      } else {
+        toast({
+          title: "Backup failed",
+          description: "There was an error creating your backup",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Backup error:", error);
+      toast({
+        title: "Backup failed",
+        description: "There was an error creating your backup",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleRestore = async (file: File) => {
+    setIsLoading(true);
+    
+    try {
+      const success = await restoreFromBackup(file);
+      
+      if (success) {
+        toast({
+          title: "Restore completed",
+          description: "Your data has been restored successfully"
+        });
+        
+        // Close the dialog
+        setIsRestoreDialogOpen(false);
+        
+        // Reload the page to reflect restored data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast({
+          title: "Restore failed",
+          description: "There was an error restoring your data",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Restore error:", error);
+      toast({
+        title: "Restore failed",
+        description: "There was an error restoring your data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleRestore(file);
+    }
   };
 
   return (
@@ -109,6 +210,13 @@ const Settings = () => {
             >
               <Users className="h-4 w-4 mr-2" />
               Team
+            </TabsTrigger>
+            <TabsTrigger 
+              value="backup" 
+              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              Backup & Restore
             </TabsTrigger>
           </TabsList>
           
@@ -547,8 +655,114 @@ const Settings = () => {
               </div>
             </div>
           </TabsContent>
+          
+          {/* Backup & Restore Settings */}
+          <TabsContent value="backup" className="mt-6 space-y-6">
+            <div className="space-y-6">
+              <h3 className="text-lg font-medium">Backup & Restore</h3>
+              <p className="text-sm text-muted-foreground">
+                Create backups of your system data and restore from previous backups
+              </p>
+              
+              <div className="space-y-6">
+                <div className="p-6 border rounded-lg bg-card space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Archive className="h-5 w-5 text-primary" />
+                    <h4 className="text-lg font-medium">Backup Data</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Create a backup file containing all your system data including inventory, locations, audits, and settings.
+                  </p>
+                  <Button 
+                    onClick={handleBackup} 
+                    disabled={isLoading}
+                    className="w-full sm:w-auto"
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Creating Backup...
+                      </span>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Backup
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="p-6 border rounded-lg bg-card space-y-4">
+                  <div className="flex items-center gap-2">
+                    <ArchiveRestore className="h-5 w-5 text-primary" />
+                    <h4 className="text-lg font-medium">Restore Data</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Restore your system data from a previously created backup file.
+                    <span className="block mt-1 font-medium text-warning">Warning: This will replace all current data with the data from the backup file.</span>
+                  </p>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".json"
+                    className="hidden"
+                  />
+                  
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsRestoreDialogOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Restore from Backup
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Restore Confirmation Dialog */}
+      <Dialog open={isRestoreDialogOpen} onOpenChange={setIsRestoreDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restore Data</DialogTitle>
+            <DialogDescription>
+              This will replace all current data with the data from the backup file.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Make sure you have a backup of your current data before proceeding.
+            </p>
+            
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="backup-file">Backup File</Label>
+              <Input 
+                id="backup-file" 
+                type="file" 
+                accept=".json"
+                onChange={handleFileChange}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRestoreDialogOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
