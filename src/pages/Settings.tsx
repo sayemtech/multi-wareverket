@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +9,65 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Key, Lock, Mail, Save, Shield, User, UserCog, Users } from "lucide-react";
+import { Bell, Camera, Key, Lock, LogOut, Mail, Save, Shield, User, UserCog, Users } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
+  const [profile, setProfile] = useState({
+    name: "Admin User",
+    email: "admin@example.com",
+    phone: "+1 (555) 123-4567",
+    role: "Administrator",
+    avatarUrl: "",
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleProfileUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully."
+      });
+    }, 1000);
+  };
+
+  const handlePasswordUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully."
+      });
+      
+      // Clear form fields
+      const form = e.target as HTMLFormElement;
+      form.reset();
+    }, 1000);
+  };
+  
+  const handleAvatarUpload = () => {
+    // Simulate file upload
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Profile picture updated",
+        description: "Your profile picture has been updated successfully."
+      });
+    }, 1000);
+  };
+
   return (
     <Layout>
       <div className="p-6 space-y-6 max-w-3xl mx-auto">
@@ -59,10 +116,20 @@ const Settings = () => {
           <TabsContent value="profile" className="mt-6 space-y-6">
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <Avatar className="h-24 w-24">
-                  <AvatarImage src="" />
-                  <AvatarFallback className="text-2xl">AD</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={profile.avatarUrl} />
+                    <AvatarFallback className="text-2xl">{profile.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
+                  </Avatar>
+                  <Button 
+                    size="icon" 
+                    variant="secondary" 
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                    onClick={handleAvatarUpload}
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>
+                </div>
                 
                 <div className="space-y-2">
                   <h3 className="text-lg font-medium">Profile Picture</h3>
@@ -70,7 +137,7 @@ const Settings = () => {
                     This will be displayed on your profile
                   </p>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleAvatarUpload}>
                       Upload
                     </Button>
                     <Button variant="outline" size="sm" className="text-destructive">
@@ -85,32 +152,60 @@ const Settings = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Personal Information</h3>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" defaultValue="Admin User" />
+                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input 
+                        id="name" 
+                        value={profile.name}
+                        onChange={(e) => setProfile({...profile, name: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        value={profile.email}
+                        onChange={(e) => setProfile({...profile, email: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input 
+                        id="phone" 
+                        type="tel" 
+                        value={profile.phone}
+                        onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
+                      <Input id="role" value={profile.role} readOnly className="bg-muted" />
+                    </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" defaultValue="admin@example.com" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" defaultValue="+1 (555) 123-4567" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Input id="role" defaultValue="Administrator" readOnly className="bg-muted" />
-                  </div>
-                </div>
-                
-                <Button className="mt-4">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </form>
               </div>
             </div>
           </TabsContent>
@@ -120,27 +215,39 @@ const Settings = () => {
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Change Password</h3>
               
-              <div className="space-y-4">
+              <form onSubmit={handlePasswordUpdate} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" />
+                  <Input id="current-password" type="password" required />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  <Input id="new-password" type="password" />
+                  <Input id="new-password" type="password" required />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input id="confirm-password" type="password" />
+                  <Input id="confirm-password" type="password" required />
                 </div>
                 
-                <Button>
-                  <Lock className="h-4 w-4 mr-2" />
-                  Update Password
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </span>
+                  ) : (
+                    <>
+                      <Lock className="h-4 w-4 mr-2" />
+                      Update Password
+                    </>
+                  )}
                 </Button>
-              </div>
+              </form>
               
               <Separator />
               
@@ -153,7 +260,12 @@ const Settings = () => {
                     Add an extra layer of security to your account
                   </p>
                 </div>
-                <Switch />
+                <Switch onChange={() => {
+                  toast({
+                    title: "Two-factor authentication",
+                    description: "Two-factor authentication settings updated"
+                  });
+                }} />
               </div>
               
               <Separator />
@@ -174,9 +286,38 @@ const Settings = () => {
                   </Button>
                 </div>
                 
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    toast({
+                      title: "New API key generated",
+                      description: "Your new API key has been created. Make sure to copy it and store it securely."
+                    });
+                  }}
+                >
                   <Key className="h-4 w-4 mr-2" />
                   Generate New API Key
+                </Button>
+              </div>
+              
+              <Separator />
+              
+              <h3 className="text-lg font-medium">Account Actions</h3>
+              
+              <div className="space-y-4">
+                <Button 
+                  variant="destructive" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    toast({
+                      title: "Log out successful",
+                      description: "You have been logged out of your account"
+                    });
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out of All Devices
                 </Button>
               </div>
             </div>
@@ -195,7 +336,11 @@ const Settings = () => {
                       Receive email for important updates
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch defaultChecked onChange={() => {
+                    toast({
+                      title: "Email notifications updated",
+                    });
+                  }} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -205,7 +350,11 @@ const Settings = () => {
                       Receive push notifications in the app
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch defaultChecked onChange={() => {
+                    toast({
+                      title: "Push notifications updated",
+                    });
+                  }} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -215,7 +364,11 @@ const Settings = () => {
                       Receive text messages for critical alerts
                     </p>
                   </div>
-                  <Switch />
+                  <Switch onChange={() => {
+                    toast({
+                      title: "SMS notifications updated",
+                    });
+                  }} />
                 </div>
               </div>
               
@@ -231,7 +384,11 @@ const Settings = () => {
                       Notify when products fall below reorder threshold
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch defaultChecked onChange={() => {
+                    toast({
+                      title: "Low stock alerts updated",
+                    });
+                  }} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -241,7 +398,11 @@ const Settings = () => {
                       Notify when shipments are received or dispatched
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch defaultChecked onChange={() => {
+                    toast({
+                      title: "Shipment notifications updated",
+                    });
+                  }} />
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -251,11 +412,20 @@ const Settings = () => {
                       Notify about system maintenance and updates
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch defaultChecked onChange={() => {
+                    toast({
+                      title: "System update notifications updated",
+                    });
+                  }} />
                 </div>
               </div>
               
-              <Button>
+              <Button onClick={() => {
+                toast({
+                  title: "Notification preferences saved",
+                  description: "Your notification preferences have been updated."
+                });
+              }}>
                 <Save className="h-4 w-4 mr-2" />
                 Save Preferences
               </Button>
@@ -267,7 +437,12 @@ const Settings = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">Team Members</h3>
-                <Button size="sm">
+                <Button size="sm" onClick={() => {
+                  toast({
+                    title: "Add team member",
+                    description: "This feature is not implemented yet."
+                  });
+                }}>
                   <UserCog className="h-4 w-4 mr-2" />
                   Add Member
                 </Button>
@@ -326,7 +501,12 @@ const Settings = () => {
                       Full access to all features
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    toast({
+                      title: "Edit role",
+                      description: "This feature is not implemented yet."
+                    });
+                  }}>
                     Edit
                   </Button>
                 </div>
@@ -338,7 +518,12 @@ const Settings = () => {
                       Can manage inventory and view reports
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    toast({
+                      title: "Edit role",
+                      description: "This feature is not implemented yet."
+                    });
+                  }}>
                     Edit
                   </Button>
                 </div>
@@ -350,7 +535,12 @@ const Settings = () => {
                       Limited to basic inventory operations
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    toast({
+                      title: "Edit role",
+                      description: "This feature is not implemented yet."
+                    });
+                  }}>
                     Edit
                   </Button>
                 </div>
