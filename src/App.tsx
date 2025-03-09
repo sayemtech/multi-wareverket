@@ -16,6 +16,7 @@ import Transfer from "./pages/Transfer";
 import Audit from "./pages/Audit";
 import AuditDetail from "./pages/AuditDetail";
 import NotFound from "./pages/NotFound";
+import { ChatProvider } from "./contexts/ChatContext";
 
 const queryClient = new QueryClient();
 

@@ -9,6 +9,7 @@ export interface Meeting {
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
   joinUrl: string;
   createdAt: string;
+  chatRoomId?: string; // Associated chat room ID for meeting discussions
 }
 
 import { getLocalStorageData, setLocalStorageData } from "./localStorage";
@@ -27,7 +28,7 @@ export const getMeetingById = (id: string): Meeting | undefined => {
 };
 
 // Create a new meeting
-export const createMeeting = (meetingData: Omit<Meeting, "id" | "createdAt" | "status" | "joinUrl">): Meeting => {
+export const createMeeting = (meetingData: Omit<Meeting, "id" | "createdAt" | "status" | "joinUrl" | "chatRoomId">): Meeting => {
   const meetings = getMeetings();
   
   // Generate a random meeting ID
@@ -42,6 +43,7 @@ export const createMeeting = (meetingData: Omit<Meeting, "id" | "createdAt" | "s
     status: 'scheduled',
     joinUrl,
     createdAt: new Date().toISOString(),
+    chatRoomId: `meeting-${id}` // Create an associated chat room ID for this meeting
   };
   
   // Save to storage
@@ -94,4 +96,66 @@ export const cancelMeeting = (id: string): boolean => {
 // End an active meeting
 export const endMeeting = (id: string): boolean => {
   return !!updateMeetingStatus(id, 'completed');
+};
+
+// Add participants to a meeting
+export const addParticipants = (meetingId: string, newParticipants: string[]): Meeting | undefined => {
+  const meetings = getMeetings();
+  const meetingIndex = meetings.findIndex(m => m.id === meetingId);
+  
+  if (meetingIndex === -1) return undefined;
+  
+  // Filter out duplicates
+  const uniqueNewParticipants = newParticipants.filter(
+    p => !meetings[meetingIndex].participants.includes(p)
+  );
+  
+  const updatedMeeting = {
+    ...meetings[meetingIndex],
+    participants: [...meetings[meetingIndex].participants, ...uniqueNewParticipants]
+  };
+  
+  meetings[meetingIndex] = updatedMeeting;
+  setLocalStorageData(MEETINGS_STORAGE_KEY, meetings);
+  
+  return updatedMeeting;
+};
+
+// Remove a participant from a meeting
+export const removeParticipant = (meetingId: string, participantEmail: string): Meeting | undefined => {
+  const meetings = getMeetings();
+  const meetingIndex = meetings.findIndex(m => m.id === meetingId);
+  
+  if (meetingIndex === -1) return undefined;
+  
+  const updatedMeeting = {
+    ...meetings[meetingIndex],
+    participants: meetings[meetingIndex].participants.filter(p => p !== participantEmail)
+  };
+  
+  meetings[meetingIndex] = updatedMeeting;
+  setLocalStorageData(MEETINGS_STORAGE_KEY, meetings);
+  
+  return updatedMeeting;
+};
+
+// Get meetings for a specific participant
+export const getMeetingsForParticipant = (participantEmail: string): Meeting[] => {
+  const meetings = getMeetings();
+  return meetings.filter(meeting => 
+    meeting.participants.includes(participantEmail) || 
+    meeting.createdBy === participantEmail
+  );
+};
+
+// Send meeting invitations (in a real app, this would send emails)
+export const sendMeetingInvitations = (meetingId: string): boolean => {
+  const meeting = getMeetingById(meetingId);
+  
+  if (!meeting) return false;
+  
+  // In a real implementation, this would send emails to participants
+  console.log(`Sending invitations for meeting "${meeting.title}" to:`, meeting.participants);
+  
+  return true;
 };

@@ -1,1085 +1,516 @@
-import { useState, useRef } from "react";
+
+import React from "react";
 import Layout from "@/components/Layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CardTitle, CardDescription, CardHeader, CardContent, CardFooter, Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Archive, 
-  ArchiveRestore, 
-  Bell, 
-  Camera, 
-  Download, 
-  Key, 
-  Lock, 
-  LogOut, 
-  Save, 
-  Shield, 
-  Upload, 
-  User, 
-  UserCog, 
-  Users,
-  Video,
-  VideoOff,
-  Link,
-  Calendar,
-  Plus
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { downloadBackup, restoreFromBackup } from "@/lib/backupRestore";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-  DialogTrigger
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { createMeeting, getMeetings, joinMeeting, cancelMeeting, Meeting } from "@/lib/meetings";
+import { downloadBackup, restoreFromBackup } from "@/lib/backupRestore";
+import { useRef, useState } from "react";
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Dialog } from "@/components/ui/dialog";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChatPanel } from "@/components/chat/ChatPanel";
+import { getMeetings, createMeeting, joinMeeting, cancelMeeting, updateMeetingStatus, Meeting } from "@/lib/meetings";
 
-const Settings = () => {
-  const [profile, setProfile] = useState({
-    name: "Admin User",
-    email: "admin@example.com",
-    phone: "+1 (555) 123-4567",
-    role: "Administrator",
-    avatarUrl: "",
-  });
-  
-  const [isLoading, setIsLoading] = useState(false);
+export default function Settings() {
+  // Backup & Restore state
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
-  const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
-  const [newMeeting, setNewMeeting] = useState({
-    title: "",
-    scheduledFor: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-    participants: []
-  });
-  const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
-  const [participantEmail, setParticipantEmail] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
-
-  const handleProfileUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully."
-      });
-    }, 1000);
-  };
-
-  const handlePasswordUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Password updated",
-        description: "Your password has been changed successfully."
-      });
-      
-      // Clear form fields
-      const form = e.target as HTMLFormElement;
-      form.reset();
-    }, 1000);
-  };
   
-  const handleAvatarUpload = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Profile picture updated",
-        description: "Your profile picture has been updated successfully."
-      });
-    }, 1000);
-  };
-
-  const handleBackup = () => {
-    setIsLoading(true);
-    
-    try {
-      const success = downloadBackup();
-      
-      if (success) {
-        toast({
-          title: "Backup created successfully",
-          description: "Your data has been backed up to a file"
-        });
-      } else {
-        toast({
-          title: "Backup failed",
-          description: "There was an error creating your backup",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Backup error:", error);
-      toast({
-        title: "Backup failed",
-        description: "There was an error creating your backup",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+  // Meetings state
+  const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
+  const [newMeetingTitle, setNewMeetingTitle] = useState("");
+  const [newMeetingTime, setNewMeetingTime] = useState("");
+  const [newMeetingParticipants, setNewMeetingParticipants] = useState("");
+  
+  // Backup functions
+  const handleDownloadBackup = () => {
+    if (downloadBackup()) {
+      toast.success("Backup file downloaded successfully");
+    } else {
+      toast.error("Failed to create backup");
     }
   };
   
-  const handleRestore = async (file: File) => {
-    setIsLoading(true);
-    
-    try {
-      const success = await restoreFromBackup(file);
-      
-      if (success) {
-        toast({
-          title: "Restore completed",
-          description: "Your data has been restored successfully"
-        });
-        
-        // Close the dialog
-        setIsRestoreDialogOpen(false);
-        
-        // Reload the page to reflect restored data
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        toast({
-          title: "Restore failed",
-          description: "There was an error restoring your data",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error("Restore error:", error);
-      toast({
-        title: "Restore failed",
-        description: "There was an error restoring your data",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+  const handleRestoreClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleRestore(file);
+      setIsRestoreDialogOpen(true);
     }
   };
-
-  const handleCreateMeeting = () => {
-    if (!newMeeting.title) {
-      toast({
-        title: "Meeting title required",
-        description: "Please enter a title for your meeting",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  
+  const handleRestoreConfirm = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) return;
+    
+    setIsRestoring(true);
+    
     try {
-      const meeting = createMeeting({
-        title: newMeeting.title,
-        scheduledFor: newMeeting.scheduledFor,
-        createdBy: profile.email,
-        participants: [...newMeeting.participants]
-      });
-
-      // Reset form
-      setNewMeeting({
-        title: "",
-        scheduledFor: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-        participants: []
-      });
-
-      // Update meetings list
-      setMeetings(getMeetings());
-      setIsCreateMeetingOpen(false);
-
-      toast({
-        title: "Meeting created",
-        description: "Your meeting has been scheduled successfully"
-      });
+      const success = await restoreFromBackup(file);
+      if (success) {
+        toast.success("System restored successfully");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast.error("Failed to restore from backup");
+      }
     } catch (error) {
-      console.error("Error creating meeting:", error);
-      toast({
-        title: "Failed to create meeting",
-        description: "There was an error creating your meeting",
-        variant: "destructive"
-      });
+      toast.error("An error occurred during restore");
+      console.error(error);
+    } finally {
+      setIsRestoring(false);
+      setIsRestoreDialogOpen(false);
     }
   };
-
+  
+  // Meeting functions
+  const handleCreateMeeting = () => {
+    if (!newMeetingTitle || !newMeetingTime) {
+      toast.error("Please provide a title and time for the meeting");
+      return;
+    }
+    
+    // Parse participants emails
+    const participants = newMeetingParticipants
+      .split(",")
+      .map(email => email.trim())
+      .filter(email => email);
+    
+    // Create the meeting
+    const meeting = createMeeting({
+      title: newMeetingTitle,
+      scheduledFor: newMeetingTime,
+      createdBy: "Admin User",
+      participants
+    });
+    
+    // Update local state
+    setMeetings(getMeetings());
+    
+    // Reset form
+    setNewMeetingTitle("");
+    setNewMeetingTime("");
+    setNewMeetingParticipants("");
+    
+    toast.success("Meeting scheduled successfully");
+  };
+  
   const handleJoinMeeting = (id: string) => {
-    const success = joinMeeting(id);
-    
-    if (success) {
-      toast({
-        title: "Joining meeting",
-        description: "Connecting to virtual meeting room..."
-      });
-      // Update meetings list to reflect status change
-      setMeetings(getMeetings());
+    if (joinMeeting(id)) {
+      toast.success("Joining meeting...");
+      setMeetings(getMeetings()); // Refresh list
     } else {
-      toast({
-        title: "Failed to join meeting",
-        description: "The meeting could not be found or is no longer available",
-        variant: "destructive"
-      });
+      toast.error("Failed to join meeting");
     }
   };
-
+  
   const handleCancelMeeting = (id: string) => {
-    const success = cancelMeeting(id);
-    
-    if (success) {
-      toast({
-        title: "Meeting cancelled",
-        description: "The meeting has been cancelled"
-      });
-      // Update meetings list
-      setMeetings(getMeetings());
+    if (cancelMeeting(id)) {
+      toast.success("Meeting cancelled");
+      setMeetings(getMeetings()); // Refresh list
     } else {
-      toast({
-        title: "Failed to cancel meeting",
-        description: "There was an error cancelling the meeting",
-        variant: "destructive"
-      });
+      toast.error("Failed to cancel meeting");
     }
   };
-
-  const handleAddParticipant = () => {
-    if (!participantEmail) return;
-    
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(participantEmail)) {
-      toast({
-        title: "Invalid email",
-        description: "Please enter a valid email address",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (newMeeting.participants.includes(participantEmail)) {
-      toast({
-        title: "Duplicate participant",
-        description: "This participant is already added to the meeting",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setNewMeeting({
-      ...newMeeting,
-      participants: [...newMeeting.participants, participantEmail]
-    });
-    
-    setParticipantEmail("");
+  
+  const handleCopyLink = (url: string) => {
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Meeting link copied to clipboard"),
+      () => toast.error("Failed to copy meeting link")
+    );
   };
-
-  const handleRemoveParticipant = (email: string) => {
-    setNewMeeting({
-      ...newMeeting,
-      participants: newMeeting.participants.filter(p => p !== email)
-    });
+  
+  // Get a formatted date string
+  const formatMeetingDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
   };
-
-  const copyMeetingLink = (url: string) => {
-    navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: "Link copied",
-        description: "Meeting link copied to clipboard"
-      });
-    });
-  };
-
+  
   return (
     <Layout>
-      <div className="p-6 space-y-6 max-w-3xl mx-auto">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your account settings and system preferences
-          </p>
+      <div className="container py-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Settings</h1>
+          <p className="text-muted-foreground">Manage your system preferences and configurations</p>
         </div>
         
-        {/* Settings Tabs */}
-        <Tabs defaultValue="profile" className="w-full animate-fade-in">
-          <TabsList className="w-full justify-start border-b rounded-none p-0 h-auto">
-            <TabsTrigger 
-              value="profile" 
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
-            >
-              <User className="h-4 w-4 mr-2" />
-              Profile
-            </TabsTrigger>
-            <TabsTrigger 
-              value="security" 
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              Security
-            </TabsTrigger>
-            <TabsTrigger 
-              value="notifications" 
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger 
-              value="team" 
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Team
-            </TabsTrigger>
-            <TabsTrigger 
-              value="backup" 
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
-            >
-              <Archive className="h-4 w-4 mr-2" />
-              Backup & Restore
-            </TabsTrigger>
-            <TabsTrigger 
-              value="meetings" 
-              className="rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-4 py-2"
-            >
-              <Video className="h-4 w-4 mr-2" />
-              Meetings
-            </TabsTrigger>
+        <Tabs defaultValue="general">
+          <TabsList className="mb-4">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+            <TabsTrigger value="backup">Backup & Restore</TabsTrigger>
+            <TabsTrigger value="meetings">Meetings</TabsTrigger>
+            <TabsTrigger value="chat">Live & Voice Chat</TabsTrigger>
           </TabsList>
           
-          {/* Profile Settings */}
-          <TabsContent value="profile" className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className="relative">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage src={profile.avatarUrl} />
-                    <AvatarFallback className="text-2xl">{profile.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                  </Avatar>
-                  <Button 
-                    size="icon" 
-                    variant="secondary" 
-                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
-                    onClick={handleAvatarUpload}
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Profile Picture</h3>
-                  <p className="text-sm text-muted-foreground">
-                    This will be displayed on your profile
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleAvatarUpload}>
-                      Upload
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-destructive">
-                      Remove
-                    </Button>
+          <TabsContent value="general">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Personal Information</CardTitle>
+                  <CardDescription>
+                    Update your account information and personal details
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="first-name">First name</Label>
+                      <Input id="first-name" placeholder="John" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="last-name">Last name</Label>
+                      <Input id="last-name" placeholder="Doe" />
+                    </div>
                   </div>
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" placeholder="johndoe@example.com" />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button>Save changes</Button>
+                </CardFooter>
+              </Card>
               
-              <Separator />
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Personal Information</h3>
-                
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input 
-                        id="name" 
-                        value={profile.name}
-                        onChange={(e) => setProfile({...profile, name: e.target.value})}
-                      />
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Preferences</CardTitle>
+                  <CardDescription>
+                    Customize your inventory management system experience
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="low-stock-alerts">Low stock alerts</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive notifications when inventory items are running low
+                      </p>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        value={profile.email}
-                        onChange={(e) => setProfile({...profile, email: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input 
-                        id="phone" 
-                        type="tel" 
-                        value={profile.phone}
-                        onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Input id="role" value={profile.role} readOnly className="bg-muted" />
-                    </div>
+                    <Switch id="low-stock-alerts" defaultChecked />
                   </div>
                   
-                  <Button type="submit" disabled={isLoading}>
-                    {isLoading ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </span>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {/* Security Settings */}
-          <TabsContent value="security" className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Change Password</h3>
-              
-              <form onSubmit={handlePasswordUpdate} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" required />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input id="new-password" type="password" required />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input id="confirm-password" type="password" required />
-                </div>
-                
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Updating...
-                    </span>
-                  ) : (
-                    <>
-                      <Lock className="h-4 w-4 mr-2" />
-                      Update Password
-                    </>
-                  )}
-                </Button>
-              </form>
-              
-              <Separator />
-              
-              <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <h4 className="font-medium">Protect your account with 2FA</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-                <Switch onChange={() => {
-                  toast({
-                    title: "Two-factor authentication",
-                    description: "Two-factor authentication settings updated"
-                  });
-                }} />
-              </div>
-              
-              <Separator />
-              
-              <h3 className="text-lg font-medium">API Keys</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Primary API Key</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Created on May 12, 2023
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Key className="h-4 w-4 mr-2" />
-                    Show Key
-                  </Button>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => {
-                    toast({
-                      title: "New API key generated",
-                      description: "Your new API key has been created. Make sure to copy it and store it securely."
-                    });
-                  }}
-                >
-                  <Key className="h-4 w-4 mr-2" />
-                  Generate New API Key
-                </Button>
-              </div>
-              
-              <Separator />
-              
-              <h3 className="text-lg font-medium">Account Actions</h3>
-              
-              <div className="space-y-4">
-                <Button 
-                  variant="destructive" 
-                  className="w-full justify-start"
-                  onClick={() => {
-                    toast({
-                      title: "Log out successful",
-                      description: "You have been logged out of your account"
-                    });
-                  }}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Log Out of All Devices
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {/* Notification Settings */}
-          <TabsContent value="notifications" className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Notification Preferences</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Email Notifications</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Receive email for important updates
-                    </p>
-                  </div>
-                  <Switch defaultChecked onChange={() => {
-                    toast({
-                      title: "Email notifications updated",
-                    });
-                  }} />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Push Notifications</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Receive push notifications in the app
-                    </p>
-                  </div>
-                  <Switch defaultChecked onChange={() => {
-                    toast({
-                      title: "Push notifications updated",
-                    });
-                  }} />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">SMS Notifications</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Receive text messages for critical alerts
-                    </p>
-                  </div>
-                  <Switch onChange={() => {
-                    toast({
-                      title: "SMS notifications updated",
-                    });
-                  }} />
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <h3 className="text-lg font-medium">Alert Settings</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Low Stock Alerts</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Notify when products fall below reorder threshold
-                    </p>
-                  </div>
-                  <Switch defaultChecked onChange={() => {
-                    toast({
-                      title: "Low stock alerts updated",
-                    });
-                  }} />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Shipment Notifications</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Notify when shipments are received or dispatched
-                    </p>
-                  </div>
-                  <Switch defaultChecked onChange={() => {
-                    toast({
-                      title: "Shipment notifications updated",
-                    });
-                  }} />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">System Updates</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Notify about system maintenance and updates
-                    </p>
-                  </div>
-                  <Switch defaultChecked onChange={() => {
-                    toast({
-                      title: "System update notifications updated",
-                    });
-                  }} />
-                </div>
-              </div>
-              
-              <Button onClick={() => {
-                toast({
-                  title: "Notification preferences saved",
-                  description: "Your notification preferences have been updated."
-                });
-              }}>
-                <Save className="h-4 w-4 mr-2" />
-                Save Preferences
-              </Button>
-            </div>
-          </TabsContent>
-          
-          {/* Team Settings */}
-          <TabsContent value="team" className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Team Members</h3>
-                <Button size="sm" onClick={() => {
-                  toast({
-                    title: "Add team member",
-                    description: "This feature is not implemented yet."
-                  });
-                }}>
-                  <UserCog className="h-4 w-4 mr-2" />
-                  Add Member
-                </Button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarFallback>AD</AvatarFallback>
-                    </Avatar>
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium">Admin User</h4>
-                      <p className="text-sm text-muted-foreground">admin@example.com</p>
+                      <Label htmlFor="auto-reorder">Automatic reorder</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically create purchase orders for low stock items
+                      </p>
                     </div>
+                    <Switch id="auto-reorder" />
                   </div>
-                  <Badge>Administrator</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarFallback>JD</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium">Jane Doe</h4>
-                      <p className="text-sm text-muted-foreground">jane@example.com</p>
-                    </div>
-                  </div>
-                  <Badge>Manager</Badge>
-                </div>
-                
-                <div className="flex items-center justify-between p-4 bg-card rounded-lg border">
-                  <div className="flex items-center space-x-4">
-                    <Avatar>
-                      <AvatarFallback>AS</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium">Alex Smith</h4>
-                      <p className="text-sm text-muted-foreground">alex@example.com</p>
-                    </div>
-                  </div>
-                  <Badge>Staff</Badge>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <h3 className="text-lg font-medium">Role Permissions</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Administrator</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Full access to all features
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    toast({
-                      title: "Edit role",
-                      description: "This feature is not implemented yet."
-                    });
-                  }}>
-                    Edit
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Manager</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Can manage inventory and view reports
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    toast({
-                      title: "Edit role",
-                      description: "This feature is not implemented yet."
-                    });
-                  }}>
-                    Edit
-                  </Button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <h4 className="font-medium">Staff</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Limited to basic inventory operations
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => {
-                    toast({
-                      title: "Edit role",
-                      description: "This feature is not implemented yet."
-                    });
-                  }}>
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-          
-          {/* Backup & Restore Settings */}
-          <TabsContent value="backup" className="mt-6 space-y-6">
-            <div className="space-y-6">
-              <h3 className="text-lg font-medium">Backup & Restore</h3>
-              <p className="text-sm text-muted-foreground">
-                Create backups of your system data and restore from previous backups
-              </p>
-              
-              <div className="space-y-6">
-                <div className="p-6 border rounded-lg bg-card space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Archive className="h-5 w-5 text-primary" />
-                    <h4 className="text-lg font-medium">Backup Data</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Create a backup file containing all your system data including inventory, locations, audits, and settings.
-                  </p>
-                  <Button 
-                    onClick={handleBackup} 
-                    disabled={isLoading}
-                    className="w-full sm:w-auto"
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Creating Backup...
-                      </span>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Backup
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                <div className="p-6 border rounded-lg bg-card space-y-4">
-                  <div className="flex items-center gap-2">
-                    <ArchiveRestore className="h-5 w-5 text-primary" />
-                    <h4 className="text-lg font-medium">Restore Data</h4>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Restore your system data from a previously created backup file.
-                    <span className="block mt-1 font-medium text-warning">Warning: This will replace all current data with the data from the backup file.</span>
-                  </p>
                   
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Default currency</Label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <select 
+                        id="currency"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option>USD ($)</option>
+                        <option>EUR (€)</option>
+                        <option>GBP (£)</option>
+                        <option>JPY (¥)</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button>Save preferences</Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notification Settings</CardTitle>
+                <CardDescription>
+                  Control how and when you receive alerts and updates
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Email Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receive system alerts via email
+                    </p>
+                  </div>
+                  <Switch id="email-notifications" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Inventory Alerts</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get notified about inventory changes and low stock
+                    </p>
+                  </div>
+                  <Switch id="inventory-alerts" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Transfer Updates</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications when transfers are created or updated
+                    </p>
+                  </div>
+                  <Switch id="transfer-updates" defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Audit Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      Get updates about scheduled and completed audits
+                    </p>
+                  </div>
+                  <Switch id="audit-notifications" defaultChecked />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button>Save notification settings</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="backup">
+            <Card>
+              <CardHeader>
+                <CardTitle>Backup and Restore</CardTitle>
+                <CardDescription>
+                  Create a backup of your data or restore from a previous backup
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Backup Data</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create a backup file containing all your inventory data, products, locations, and settings.
+                    You can use this file to restore your system in case of data loss.
+                  </p>
+                  <Button onClick={handleDownloadBackup}>
+                    Download Backup
+                  </Button>
+                </div>
+                
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-2">Restore Data</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Restore your system from a previous backup file. This will replace all current data with the data from the backup file.
+                    Make sure to create a backup of your current data before proceeding.
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <Button onClick={handleRestoreClick} variant="outline">
+                      Select Backup File
+                    </Button>
+                    <p className="text-sm text-muted-foreground">
+                      No file selected
+                    </p>
+                  </div>
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleFileChange}
                     accept=".json"
+                    onChange={handleFileChange}
                     className="hidden"
                   />
-                  
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Restore confirmation dialog */}
+            <Dialog open={isRestoreDialogOpen} onOpenChange={setIsRestoreDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                    Confirm Restore
+                  </DialogTitle>
+                  <DialogDescription>
+                    This action will replace all current data with the data from the selected backup file.
+                    This cannot be undone. Are you sure you want to proceed?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
                   <Button 
                     variant="outline" 
-                    onClick={() => setIsRestoreDialogOpen(true)}
-                    className="w-full sm:w-auto"
+                    onClick={() => setIsRestoreDialogOpen(false)}
+                    disabled={isRestoring}
                   >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Restore from Backup
+                    Cancel
                   </Button>
-                </div>
-              </div>
-            </div>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleRestoreConfirm}
+                    disabled={isRestoring}
+                  >
+                    {isRestoring ? "Restoring..." : "Yes, Restore"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
-
-          {/* Meetings Settings */}
-          <TabsContent value="meetings" className="mt-6 space-y-6">
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Virtual Meetings</h3>
-                <Dialog open={isCreateMeetingOpen} onOpenChange={setIsCreateMeetingOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Meeting
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Create New Meeting</DialogTitle>
-                      <DialogDescription>
-                        Schedule a virtual meeting with your team
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="meeting-title">Meeting Title</Label>
-                        <Input 
-                          id="meeting-title" 
-                          placeholder="Quarterly Inventory Review" 
-                          value={newMeeting.title}
-                          onChange={(e) => setNewMeeting({...newMeeting, title: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="meeting-date">Date & Time</Label>
-                        <Input 
-                          id="meeting-date" 
-                          type="datetime-local" 
-                          value={newMeeting.scheduledFor}
-                          onChange={(e) => setNewMeeting({...newMeeting, scheduledFor: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Participants</Label>
-                        <div className="flex gap-2">
-                          <Input 
-                            placeholder="participant@example.com" 
-                            value={participantEmail}
-                            onChange={(e) => setParticipantEmail(e.target.value)}
-                          />
-                          <Button type="button" onClick={handleAddParticipant} variant="outline">
-                            Add
-                          </Button>
-                        </div>
-                        {newMeeting.participants.length > 0 && (
-                          <div className="mt-2 space-y-2">
-                            {newMeeting.participants.map((email) => (
-                              <div key={email} className="flex items-center justify-between bg-muted p-2 rounded-md">
-                                <span className="text-sm">{email}</span>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => handleRemoveParticipant(email)}
-                                >
-                                  &times;
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsCreateMeetingOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleCreateMeeting}>
-                        Create Meeting
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              
-              <p className="text-sm text-muted-foreground">
-                Schedule and manage virtual meetings with your team members
-              </p>
-
-              <div className="space-y-4">
-                {meetings.length === 0 ? (
-                  <div className="p-8 text-center border rounded-lg">
-                    <Video className="h-8 w-8 mx-auto text-muted-foreground mb-4" />
-                    <h4 className="text-lg font-medium mb-2">No meetings scheduled</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Create your first virtual meeting to collaborate with your team
-                    </p>
-                    <Button onClick={() => setIsCreateMeetingOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      New Meeting
-                    </Button>
+          
+          <TabsContent value="meetings">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="md:col-span-1">
+                <CardHeader>
+                  <CardTitle>Schedule Meeting</CardTitle>
+                  <CardDescription>
+                    Create a new virtual meeting for team members
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="meeting-title">Meeting Title</Label>
+                    <Input 
+                      id="meeting-title" 
+                      placeholder="Quarterly Inventory Review" 
+                      value={newMeetingTitle}
+                      onChange={(e) => setNewMeetingTitle(e.target.value)}
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {meetings.map((meeting) => (
-                      <div 
-                        key={meeting.id} 
-                        className={`p-4 border rounded-lg ${meeting.status === 'cancelled' ? 'opacity-60' : ''}`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium text-lg">{meeting.title}</h4>
-                              <Badge variant={
-                                meeting.status === 'scheduled' ? 'outline' : 
-                                meeting.status === 'active' ? 'default' : 
-                                meeting.status === 'completed' ? 'secondary' : 'destructive'
-                              }>
-                                {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                              {new Date(meeting.scheduledFor).toLocaleString()}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {meeting.participants.length} participant{meeting.participants.length !== 1 ? 's' : ''}
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="meeting-time">Date and Time</Label>
+                    <Input 
+                      id="meeting-time" 
+                      type="datetime-local" 
+                      value={newMeetingTime}
+                      onChange={(e) => setNewMeetingTime(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="meeting-participants">Participants (comma separated)</Label>
+                    <Input 
+                      id="meeting-participants" 
+                      placeholder="user1@example.com, user2@example.com" 
+                      value={newMeetingParticipants}
+                      onChange={(e) => setNewMeetingParticipants(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleCreateMeeting}>Schedule Meeting</Button>
+                </CardFooter>
+              </Card>
+              
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle>Upcoming Meetings</CardTitle>
+                  <CardDescription>
+                    View and manage your scheduled meetings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {meetings.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No meetings scheduled</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {meetings.map((meeting) => (
+                        <Card key={meeting.id} className="overflow-hidden">
+                          <div className="flex flex-col sm:flex-row border-b">
+                            <div className="flex-1 p-4">
+                              <div className="flex justify-between mb-1">
+                                <h3 className="font-medium">{meeting.title}</h3>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  meeting.status === 'scheduled' 
+                                    ? 'bg-blue-100 text-blue-700' 
+                                    : meeting.status === 'active'
+                                    ? 'bg-green-100 text-green-700'
+                                    : meeting.status === 'completed'
+                                    ? 'bg-gray-100 text-gray-700'
+                                    : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Scheduled for: {formatMeetingDate(meeting.scheduledFor)}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {meeting.participants.length} participants
+                              </p>
                             </div>
                           </div>
-                          <div className="flex gap-2 ml-auto">
-                            {meeting.status !== 'cancelled' && meeting.status !== 'completed' && (
+                          <div className="p-3 bg-muted/30 flex flex-wrap gap-2 justify-end">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleCopyLink(meeting.joinUrl)}
+                            >
+                              Copy Link
+                            </Button>
+                            
+                            {meeting.status === 'scheduled' && (
                               <>
                                 <Button 
-                                  size="sm" 
+                                  variant="default" 
+                                  size="sm"
                                   onClick={() => handleJoinMeeting(meeting.id)}
-                                  className="whitespace-nowrap"
                                 >
-                                  <Video className="h-4 w-4 mr-2" />
-                                  Join
+                                  Join Meeting
                                 </Button>
-                                <Button
+                                <Button 
+                                  variant="destructive" 
                                   size="sm"
-                                  variant="outline"
-                                  onClick={() => copyMeetingLink(meeting.joinUrl)}
-                                >
-                                  <Link className="h-4 w-4 mr-2" />
-                                  Copy Link
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
                                   onClick={() => handleCancelMeeting(meeting.id)}
                                 >
-                                  <VideoOff className="h-4 w-4 mr-2" />
                                   Cancel
                                 </Button>
                               </>
                             )}
+                            
+                            {meeting.status === 'active' && (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => handleJoinMeeting(meeting.id)}
+                              >
+                                Join Now
+                              </Button>
+                            )}
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
+          </TabsContent>
+          
+          <TabsContent value="chat">
+            <Card>
+              <CardHeader>
+                <CardTitle>Live & Voice Chat</CardTitle>
+                <CardDescription>
+                  Communicate with your team in real-time through text and voice chat
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChatPanel />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
-      
-      {/* Restore Confirmation Dialog */}
-      <Dialog open={isRestoreDialogOpen} onOpenChange={setIsRestoreDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Restore Data</DialogTitle>
-            <DialogDescription>
-              This will replace all current data with the data from the backup file.
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Make sure you have a backup of your current data before proceeding.
-            </p>
-            
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="backup-file">Backup File</Label>
-              <Input 
-                id="backup-file" 
-                type="file" 
-                accept=".json"
-                onChange={handleFileChange}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRestoreDialogOpen(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
-};
-
-export default Settings;
-
+}
