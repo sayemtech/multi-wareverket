@@ -5,7 +5,7 @@ import { ChatMessage } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, MicOff, Send, Users } from "lucide-react";
+import { Mic, MicOff, Send, Users, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const ChatArea = () => {

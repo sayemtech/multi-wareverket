@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 // Type for audio recorder state
 type RecorderState = "inactive" | "recording" | "paused";
 
