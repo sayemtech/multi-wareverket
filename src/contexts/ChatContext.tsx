@@ -1,9 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getLocalStorageData, setLocalStorageData } from "@/lib/localStorage";
 
 // Chat message types
-export type ChatMessageType = "text" | "audio" | "system";
+export type ChatMessageType = "text" | "audio" | "system" | "image" | "document";
 export type ChatVisibility = "private" | "public";
 
 // Chat roles
@@ -18,6 +17,8 @@ export interface ChatMessage {
   type: ChatMessageType;
   timestamp: string;
   isRead: boolean;
+  fileName?: string; // For document and image files
+  fileSize?: number; // For document and image files
 }
 
 // Chat room interface
@@ -37,7 +38,7 @@ interface ChatContextType {
   activeRoomId: string | null;
   setActiveRoomId: (id: string | null) => void;
   messages: ChatMessage[];
-  sendMessage: (content: string, type: ChatMessageType) => void;
+  sendMessage: (content: string, type: ChatMessageType, fileInfo?: { name: string, size: number }) => void;
   createRoom: (name: string, participants: string[], visibility: ChatVisibility) => ChatRoom;
   deleteRoom: (id: string) => void;
   isRecording: boolean;
@@ -127,7 +128,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     : [];
   
   // Send a message to the active room
-  const sendMessage = useCallback((content: string, type: ChatMessageType = "text") => {
+  const sendMessage = useCallback((content: string, type: ChatMessageType = "text", fileInfo?: { name: string, size: number }) => {
     if (!activeRoomId) return;
     
     const newMessage: ChatMessage = {
@@ -139,6 +140,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       timestamp: new Date().toISOString(),
       isRead: false
     };
+    
+    // Add file information if available
+    if (fileInfo) {
+      newMessage.fileName = fileInfo.name;
+      newMessage.fileSize = fileInfo.size;
+    }
     
     setRooms(prevRooms => {
       return prevRooms.map(room => {

@@ -1,9 +1,8 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage as ChatMessageType } from "@/contexts/ChatContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
@@ -51,14 +50,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => 
     }
   };
   
-  // Format duration as MM:SS
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  // Get current time as MM:SS
   const getCurrentTime = () => {
     if (audioRef.current) {
       return formatDuration(audioRef.current.currentTime);
@@ -66,7 +63,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => 
     return "00:00";
   };
   
-  // Get initials for avatar
+  const formatFileSize = (bytes: number | undefined) => {
+    if (!bytes) return "0 B";
+    
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
+  };
+  
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -74,6 +85,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => 
       .join("")
       .toUpperCase()
       .substring(0, 2);
+  };
+  
+  const handleDownload = (url: string, fileName: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'download';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
   
   return (
@@ -150,6 +170,63 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => 
               onLoadedMetadata={handleLoadedMetadata}
               className="hidden"
             />
+          </div>
+        )}
+        
+        {message.type === "image" && (
+          <div
+            className={cn(
+              "mt-1 p-2 rounded-lg overflow-hidden",
+              isMine
+                ? "bg-primary text-primary-foreground rounded-tr-none"
+                : "bg-secondary rounded-tl-none"
+            )}
+          >
+            <div className="relative">
+              <img 
+                src={message.content} 
+                alt={message.fileName || "Image"} 
+                className="rounded max-w-full h-auto"
+                style={{ maxHeight: "300px" }}
+              />
+              {message.fileName && (
+                <div className="text-xs mt-1 flex items-center justify-between">
+                  <span>{message.fileName}</span>
+                  <span>{formatFileSize(message.fileSize)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {message.type === "document" && (
+          <div
+            className={cn(
+              "mt-1 p-3 rounded-lg",
+              isMine
+                ? "bg-primary text-primary-foreground rounded-tr-none"
+                : "bg-secondary rounded-tl-none"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <FileText className="h-10 w-10" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm truncate">
+                  {message.fileName || "Document"}
+                </div>
+                <div className="text-xs">
+                  {formatFileSize(message.fileSize)}
+                </div>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={() => handleDownload(message.content, message.fileName || "document")}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
         

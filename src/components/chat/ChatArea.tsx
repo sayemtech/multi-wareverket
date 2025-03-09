@@ -5,7 +5,7 @@ import { ChatMessage } from "./ChatMessage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, MicOff, Send, Users, MessageSquare } from "lucide-react";
+import { Mic, MicOff, Send, Users, MessageSquare, Image, Paperclip } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAudioRecorder } from "@/lib/audioRecorder";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ export const ChatArea = () => {
   const [recordingTimerId, setRecordingTimerId] = useState<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRecorder = useAudioRecorder();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Get current room
   const currentRoom = rooms.find(room => room.id === activeRoomId);
@@ -93,6 +94,59 @@ export const ChatArea = () => {
         }
       }
     }
+  };
+  
+  // Handle file upload click
+  const handleFileUploadClick = (type: 'image' | 'document') => {
+    if (fileInputRef.current) {
+      fileInputRef.current.setAttribute('accept', type === 'image' ? 'image/*' : '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx');
+      fileInputRef.current.setAttribute('data-type', type);
+      fileInputRef.current.click();
+    }
+  };
+  
+  // Handle file selection
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    const type = e.target.getAttribute('data-type') as 'image' | 'document';
+    
+    if (!type) {
+      toast.error("Unknown file type");
+      return;
+    }
+    
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 10MB");
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target && event.target.result) {
+        // Create file info for the message
+        const fileInfo = {
+          name: file.name,
+          size: file.size
+        };
+        
+        // Send the file message
+        sendMessage(event.target.result.toString(), type, fileInfo);
+        toast.success(`${type === 'image' ? 'Image' : 'Document'} sent`);
+      }
+    };
+    reader.onerror = () => {
+      toast.error(`Error reading ${type}`);
+    };
+    
+    // Read the file as Data URL
+    reader.readAsDataURL(file);
+    
+    // Reset the input
+    e.target.value = '';
   };
   
   // Format recording time as MM:SS
@@ -212,6 +266,24 @@ export const ChatArea = () => {
             {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           </Button>
           
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => handleFileUploadClick('image')}
+            disabled={isRecording}
+          >
+            <Image className="h-5 w-5" />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => handleFileUploadClick('document')}
+            disabled={isRecording}
+          >
+            <Paperclip className="h-5 w-5" />
+          </Button>
+          
           <Input
             placeholder="Type your message..."
             value={messageText}
@@ -229,6 +301,14 @@ export const ChatArea = () => {
           >
             <Send className="h-5 w-5" />
           </Button>
+          
+          {/* Hidden file input */}
+          <input 
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileSelected}
+          />
         </div>
       </div>
     </div>
