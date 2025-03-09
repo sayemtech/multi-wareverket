@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mic, MicOff, Send, Users, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAudioRecorder } from "@/lib/audioRecorder";
+import { toast } from "sonner";
 
 export const ChatArea = () => {
   const { 
@@ -20,7 +22,10 @@ export const ChatArea = () => {
   } = useChat();
   const [messageText, setMessageText] = useState("");
   const [showParticipants, setShowParticipants] = useState(false);
+  const [recordingTimer, setRecordingTimer] = useState(0);
+  const [recordingTimerId, setRecordingTimerId] = useState<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRecorder = useAudioRecorder();
   
   // Get current room
   const currentRoom = rooms.find(room => room.id === activeRoomId);
@@ -49,17 +54,62 @@ export const ChatArea = () => {
   };
   
   // Handle voice recording
-  const handleVoiceRecording = () => {
-    // In a real app, this would handle actual voice recording
-    // For demo purposes, we'll just toggle the recording state
-    toggleRecording();
-    
-    // Simulate sending a voice message after recording
-    if (isRecording) {
-      // This would be the actual audio URL in a real implementation
-      sendMessage("https://example.com/audio/message.mp3", "audio");
+  const handleVoiceRecording = async () => {
+    if (!isRecording) {
+      // Start recording
+      try {
+        await audioRecorder?.start();
+        toggleRecording();
+        toast.info("Recording started");
+        
+        // Start recording timer
+        const timerId = setInterval(() => {
+          setRecordingTimer(prev => prev + 1);
+        }, 1000);
+        setRecordingTimerId(timerId);
+      } catch (error) {
+        console.error("Error starting recording:", error);
+        toast.error("Could not access microphone");
+      }
+    } else {
+      // Stop recording
+      if (audioRecorder) {
+        try {
+          const audioUrl = await audioRecorder.stop();
+          sendMessage(audioUrl, "audio");
+          toggleRecording();
+          toast.success("Voice message sent");
+          
+          // Reset and clear recording timer
+          if (recordingTimerId) {
+            clearInterval(recordingTimerId);
+            setRecordingTimerId(null);
+          }
+          setRecordingTimer(0);
+        } catch (error) {
+          console.error("Error stopping recording:", error);
+          toast.error("Error processing voice message");
+          toggleRecording();
+        }
+      }
     }
   };
+  
+  // Format recording time as MM:SS
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerId) {
+        clearInterval(recordingTimerId);
+      }
+    };
+  }, [recordingTimerId]);
   
   // If no active room is selected
   if (!activeRoomId || !currentRoom) {
@@ -143,6 +193,15 @@ export const ChatArea = () => {
       
       {/* Input area */}
       <div className="p-4 border-t border-border">
+        {isRecording && (
+          <div className="flex items-center justify-center mb-3">
+            <div className="px-4 py-1 bg-red-100 text-red-500 rounded-full flex items-center gap-2 animate-pulse">
+              <span className="h-2 w-2 bg-red-500 rounded-full"></span>
+              <span>Recording {formatRecordingTime(recordingTimer)}</span>
+            </div>
+          </div>
+        )}
+        
         <div className="flex gap-2">
           <Button
             variant="outline"

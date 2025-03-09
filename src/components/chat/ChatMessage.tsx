@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage as ChatMessageType } from "@/contexts/ChatContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -13,8 +13,10 @@ interface ChatMessageProps {
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => {
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Handlers for audio messages
   const toggleAudio = () => {
@@ -24,13 +26,44 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => 
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      audioRef.current.play().catch(err => {
+        console.error("Error playing audio:", err);
+      });
       setIsPlaying(true);
     }
   };
   
   const handleAudioEnded = () => {
     setIsPlaying(false);
+    setProgress(0);
+  };
+  
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      const currentProgress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+      setProgress(currentProgress);
+    }
+  };
+  
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+  
+  // Format duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  // Get current time as MM:SS
+  const getCurrentTime = () => {
+    if (audioRef.current) {
+      return formatDuration(audioRef.current.currentTime);
+    }
+    return "00:00";
   };
   
   // Get initials for avatar
@@ -78,29 +111,43 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isMine }) => 
         {message.type === "audio" && (
           <div
             className={cn(
-              "mt-1 p-3 rounded-lg flex items-center gap-2",
+              "mt-1 p-3 rounded-lg",
               isMine
                 ? "bg-primary text-primary-foreground rounded-tr-none"
                 : "bg-secondary rounded-tl-none"
             )}
           >
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-full"
-              onClick={toggleAudio}
-            >
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </Button>
-            <div className="h-12 flex-1 flex items-center">
-              <div className="bg-secondary-foreground/20 h-2 w-full rounded-full">
-                <div className="bg-secondary-foreground h-full rounded-full w-0"></div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full"
+                onClick={toggleAudio}
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+              
+              <div className="flex-1">
+                <div className="w-full bg-secondary-foreground/20 h-2 rounded-full">
+                  <div 
+                    className="bg-secondary-foreground h-full rounded-full transition-all duration-100"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                
+                <div className="flex justify-between mt-1 text-xs">
+                  <span>{isPlaying ? getCurrentTime() : "00:00"}</span>
+                  <span>{formatDuration(duration)}</span>
+                </div>
               </div>
             </div>
+            
             <audio
               ref={audioRef}
               src={message.content}
               onEnded={handleAudioEnded}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
               className="hidden"
             />
           </div>

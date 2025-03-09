@@ -19,11 +19,12 @@ export const createAudioRecorder = (): AudioRecorder => {
   let mediaRecorder: MediaRecorder | null = null;
   let audioChunks: Blob[] = [];
   let audioBlob: Blob | null = null;
+  let stream: MediaStream | null = null;
   
   // Request microphone access and create a MediaRecorder
   const start = async (): Promise<void> => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder = new MediaRecorder(stream);
       
       // Clear any previous recording data
@@ -42,7 +43,9 @@ export const createAudioRecorder = (): AudioRecorder => {
         audioBlob = new Blob(audioChunks, { type: "audio/webm" });
         
         // Stop all tracks to release the microphone
-        stream.getTracks().forEach(track => track.stop());
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
       };
       
       // Start recording
