@@ -10,6 +10,19 @@ export interface Meeting {
   joinUrl: string;
   createdAt: string;
   chatRoomId?: string; // Associated chat room ID for meeting discussions
+  description?: string; // Meeting description
+  duration?: number; // Duration in minutes
+  recordingEnabled?: boolean; // Whether recording is enabled
+  isRecurring?: boolean; // Whether this is a recurring meeting
+  recurringPattern?: string; // Pattern for recurring meetings (if applicable)
+  password?: string; // Optional meeting password
+  hostControls?: {
+    muteAllParticipants?: boolean;
+    disableParticipantVideo?: boolean;
+    allowScreenSharing?: boolean;
+    allowChat?: boolean;
+    waitingRoom?: boolean;
+  };
 }
 
 import { getLocalStorageData, setLocalStorageData } from "./localStorage";
@@ -43,7 +56,14 @@ export const createMeeting = (meetingData: Omit<Meeting, "id" | "createdAt" | "s
     status: 'scheduled',
     joinUrl,
     createdAt: new Date().toISOString(),
-    chatRoomId: `meeting-${id}` // Create an associated chat room ID for this meeting
+    chatRoomId: `meeting-${id}`, // Create an associated chat room ID for this meeting
+    hostControls: {
+      muteAllParticipants: false,
+      disableParticipantVideo: false,
+      allowScreenSharing: true,
+      allowChat: true,
+      waitingRoom: false
+    }
   };
   
   // Save to storage
@@ -62,6 +82,51 @@ export const updateMeetingStatus = (id: string, status: Meeting['status']): Meet
   const updatedMeeting = {
     ...meetings[meetingIndex],
     status
+  };
+  
+  meetings[meetingIndex] = updatedMeeting;
+  setLocalStorageData(MEETINGS_STORAGE_KEY, meetings);
+  
+  return updatedMeeting;
+};
+
+// Update meeting settings
+export const updateMeetingSettings = (
+  id: string, 
+  settings: Partial<Meeting>
+): Meeting | undefined => {
+  const meetings = getMeetings();
+  const meetingIndex = meetings.findIndex(m => m.id === id);
+  
+  if (meetingIndex === -1) return undefined;
+  
+  const updatedMeeting = {
+    ...meetings[meetingIndex],
+    ...settings
+  };
+  
+  meetings[meetingIndex] = updatedMeeting;
+  setLocalStorageData(MEETINGS_STORAGE_KEY, meetings);
+  
+  return updatedMeeting;
+};
+
+// Update host controls
+export const updateHostControls = (
+  id: string, 
+  controls: Partial<Meeting['hostControls']>
+): Meeting | undefined => {
+  const meetings = getMeetings();
+  const meetingIndex = meetings.findIndex(m => m.id === id);
+  
+  if (meetingIndex === -1) return undefined;
+  
+  const updatedMeeting = {
+    ...meetings[meetingIndex],
+    hostControls: {
+      ...meetings[meetingIndex].hostControls,
+      ...controls
+    }
   };
   
   meetings[meetingIndex] = updatedMeeting;
@@ -158,4 +223,62 @@ export const sendMeetingInvitations = (meetingId: string): boolean => {
   console.log(`Sending invitations for meeting "${meeting.title}" to:`, meeting.participants);
   
   return true;
+};
+
+// Generate meeting report
+export const generateMeetingReport = (id: string): any => {
+  const meeting = getMeetingById(id);
+  
+  if (!meeting) return null;
+  
+  // In a real app, this would generate a comprehensive report with analytics
+  return {
+    meetingId: meeting.id,
+    title: meeting.title,
+    date: meeting.scheduledFor,
+    duration: meeting.duration || 60,
+    hostEmail: meeting.createdBy,
+    totalParticipants: meeting.participants.length,
+    status: meeting.status
+  };
+};
+
+// Create recurring meeting series
+export const createRecurringMeeting = (
+  baseData: Omit<Meeting, "id" | "createdAt" | "status" | "joinUrl" | "chatRoomId">,
+  pattern: string,
+  occurrences: number
+): Meeting[] => {
+  const createdMeetings: Meeting[] = [];
+  
+  // Create the first meeting
+  const firstMeeting = createMeeting({
+    ...baseData,
+    isRecurring: true,
+    recurringPattern: pattern
+  });
+  
+  createdMeetings.push(firstMeeting);
+  
+  // In a real implementation, we would create the series based on the pattern
+  // For this demo, we'll just create dummy future meetings
+  
+  const baseDate = new Date(baseData.scheduledFor);
+  
+  for (let i = 1; i < occurrences; i++) {
+    // Simple weekly pattern for demo purposes
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(baseDate.getDate() + (7 * i)); // Add weeks
+    
+    const nextMeeting = createMeeting({
+      ...baseData,
+      scheduledFor: nextDate.toISOString(),
+      isRecurring: true,
+      recurringPattern: pattern
+    });
+    
+    createdMeetings.push(nextMeeting);
+  }
+  
+  return createdMeetings;
 };

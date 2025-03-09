@@ -11,21 +11,15 @@ import { toast } from "sonner";
 import { downloadBackup, restoreFromBackup } from "@/lib/backupRestore";
 import { useRef, useState } from "react";
 import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Dialog } from "@/components/ui/dialog";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { ChatPanel } from "@/components/chat/ChatPanel";
-import { getMeetings, createMeeting, joinMeeting, cancelMeeting, updateMeetingStatus, Meeting } from "@/lib/meetings";
+import { MeetingsTabContent } from "@/components/MeetingsTabContent";
 
 export default function Settings() {
   // Backup & Restore state
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Meetings state
-  const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
-  const [newMeetingTitle, setNewMeetingTitle] = useState("");
-  const [newMeetingTime, setNewMeetingTime] = useState("");
-  const [newMeetingParticipants, setNewMeetingParticipants] = useState("");
   
   // Backup functions
   const handleDownloadBackup = () => {
@@ -73,70 +67,7 @@ export default function Settings() {
       setIsRestoreDialogOpen(false);
     }
   };
-  
-  // Meeting functions
-  const handleCreateMeeting = () => {
-    if (!newMeetingTitle || !newMeetingTime) {
-      toast.error("Please provide a title and time for the meeting");
-      return;
-    }
     
-    // Parse participants emails
-    const participants = newMeetingParticipants
-      .split(",")
-      .map(email => email.trim())
-      .filter(email => email);
-    
-    // Create the meeting
-    const meeting = createMeeting({
-      title: newMeetingTitle,
-      scheduledFor: newMeetingTime,
-      createdBy: "Admin User",
-      participants
-    });
-    
-    // Update local state
-    setMeetings(getMeetings());
-    
-    // Reset form
-    setNewMeetingTitle("");
-    setNewMeetingTime("");
-    setNewMeetingParticipants("");
-    
-    toast.success("Meeting scheduled successfully");
-  };
-  
-  const handleJoinMeeting = (id: string) => {
-    if (joinMeeting(id)) {
-      toast.success("Joining meeting...");
-      setMeetings(getMeetings()); // Refresh list
-    } else {
-      toast.error("Failed to join meeting");
-    }
-  };
-  
-  const handleCancelMeeting = (id: string) => {
-    if (cancelMeeting(id)) {
-      toast.success("Meeting cancelled");
-      setMeetings(getMeetings()); // Refresh list
-    } else {
-      toast.error("Failed to cancel meeting");
-    }
-  };
-  
-  const handleCopyLink = (url: string) => {
-    navigator.clipboard.writeText(url).then(
-      () => toast.success("Meeting link copied to clipboard"),
-      () => toast.error("Failed to copy meeting link")
-    );
-  };
-  
-  // Get a formatted date string
-  const formatMeetingDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
-  
   return (
     <Layout>
       <div className="container py-6">
@@ -365,135 +296,7 @@ export default function Settings() {
           </TabsContent>
           
           <TabsContent value="meetings">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle>Schedule Meeting</CardTitle>
-                  <CardDescription>
-                    Create a new virtual meeting for team members
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="meeting-title">Meeting Title</Label>
-                    <Input 
-                      id="meeting-title" 
-                      placeholder="Quarterly Inventory Review" 
-                      value={newMeetingTitle}
-                      onChange={(e) => setNewMeetingTitle(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="meeting-time">Date and Time</Label>
-                    <Input 
-                      id="meeting-time" 
-                      type="datetime-local" 
-                      value={newMeetingTime}
-                      onChange={(e) => setNewMeetingTime(e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="meeting-participants">Participants (comma separated)</Label>
-                    <Input 
-                      id="meeting-participants" 
-                      placeholder="user1@example.com, user2@example.com" 
-                      value={newMeetingParticipants}
-                      onChange={(e) => setNewMeetingParticipants(e.target.value)}
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={handleCreateMeeting}>Schedule Meeting</Button>
-                </CardFooter>
-              </Card>
-              
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Upcoming Meetings</CardTitle>
-                  <CardDescription>
-                    View and manage your scheduled meetings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {meetings.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No meetings scheduled</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {meetings.map((meeting) => (
-                        <Card key={meeting.id} className="overflow-hidden">
-                          <div className="flex flex-col sm:flex-row border-b">
-                            <div className="flex-1 p-4">
-                              <div className="flex justify-between mb-1">
-                                <h3 className="font-medium">{meeting.title}</h3>
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  meeting.status === 'scheduled' 
-                                    ? 'bg-blue-100 text-blue-700' 
-                                    : meeting.status === 'active'
-                                    ? 'bg-green-100 text-green-700'
-                                    : meeting.status === 'completed'
-                                    ? 'bg-gray-100 text-gray-700'
-                                    : 'bg-red-100 text-red-700'
-                                }`}>
-                                  {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
-                                </span>
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                Scheduled for: {formatMeetingDate(meeting.scheduledFor)}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {meeting.participants.length} participants
-                              </p>
-                            </div>
-                          </div>
-                          <div className="p-3 bg-muted/30 flex flex-wrap gap-2 justify-end">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleCopyLink(meeting.joinUrl)}
-                            >
-                              Copy Link
-                            </Button>
-                            
-                            {meeting.status === 'scheduled' && (
-                              <>
-                                <Button 
-                                  variant="default" 
-                                  size="sm"
-                                  onClick={() => handleJoinMeeting(meeting.id)}
-                                >
-                                  Join Meeting
-                                </Button>
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm"
-                                  onClick={() => handleCancelMeeting(meeting.id)}
-                                >
-                                  Cancel
-                                </Button>
-                              </>
-                            )}
-                            
-                            {meeting.status === 'active' && (
-                              <Button 
-                                variant="default" 
-                                size="sm"
-                                onClick={() => handleJoinMeeting(meeting.id)}
-                              >
-                                Join Now
-                              </Button>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <MeetingsTabContent />
           </TabsContent>
           
           <TabsContent value="chat">
