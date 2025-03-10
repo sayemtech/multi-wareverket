@@ -28,7 +28,7 @@ import {
   PlusCircle,
   AlertCircle,
   Share2,
-  Record,
+  CircleDot,
   Layout,
   SlidersHorizontal,
   Lock,
@@ -258,7 +258,7 @@ export default function MeetingRoom() {
           </Badge>
           {isRecording && (
             <Badge variant="destructive" className="animate-pulse">
-              <Record className="mr-1 h-3 w-3" /> Recording
+              <CircleDot className="mr-1 h-3 w-3" /> Recording
             </Badge>
           )}
         </div>
@@ -551,7 +551,7 @@ export default function MeetingRoom() {
                     className={isRecording ? "bg-red-600 text-white animate-pulse" : ""}
                     onClick={toggleRecording}
                   >
-                    <Record />
+                    <CircleDot />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
