@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 
 interface SecurityContextType {
@@ -12,7 +13,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isTimedOut, setIsTimedOut] = useState(false);
   const secretKeySequence = useRef<string[]>([]);
-  const secretKey = "Mansur";
+  const secretKey = "admin";
   
   useEffect(() => {
     // Set timeout after 5 seconds
