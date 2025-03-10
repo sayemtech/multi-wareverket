@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { DashboardMetrics } from "@/components/DashboardMetrics";
@@ -12,6 +13,15 @@ import { BarChart } from "@/components/charts/BarChart";
 import { StockMovementChart } from "@/components/charts/StockMovementChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { 
   Clock, 
   Download, 
@@ -21,8 +31,11 @@ import {
   Upload, 
   ShoppingCart, 
   Truck, 
-  PackageSearch 
+  PackageSearch,
+  FileText
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { UpdateInventoryForm } from "@/components/UpdateInventoryForm";
 
 // Sample data for the overview chart
 const overviewData = [
@@ -125,6 +138,10 @@ const Dashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState(sampleAlerts);
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+  const navigate = useNavigate();
   
   // Format date for display
   const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -179,12 +196,38 @@ const Dashboard = () => {
     setAlerts(alerts.map(alert => 
       alert.id === id ? { ...alert, isRead: true } : alert
     ));
+    toast.success("Alert marked as read");
   };
   
   // Handle clear all alerts
   const handleClearAllAlerts = () => {
     setAlerts([]);
     toast.success("All alerts cleared");
+  };
+  
+  // Handle clear single alert
+  const handleClearAlert = (id: string) => {
+    setAlerts(alerts.filter(alert => alert.id !== id));
+    toast.success("Alert removed");
+  };
+  
+  // Handle export data
+  const handleExportData = (format: 'csv' | 'pdf' | 'excel') => {
+    toast.success(`Data export initiated in ${format.toUpperCase()} format`, {
+      description: "Your download will begin shortly"
+    });
+    setIsExportDialogOpen(false);
+  };
+  
+  // Handle filter application
+  const handleApplyFilter = () => {
+    toast.success("Filters applied successfully");
+    setIsFilterDialogOpen(false);
+  };
+  
+  // Handle navigation to other sections
+  const handleNavigate = (path: string) => {
+    navigate(path);
   };
   
   if (loading) {
@@ -217,18 +260,94 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center space-x-2 mt-4 sm:mt-0">
             <BarcodeScanner onCodeScanned={handleBarcodeScanned} />
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              New Item
-            </Button>
+            
+            {/* Filter Dialog */}
+            <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Filter Inventory</DialogTitle>
+                  <DialogDescription>
+                    Apply filters to narrow down inventory items.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  {/* Filter form elements would go here */}
+                  <p className="text-sm text-muted-foreground">Filter options coming soon</p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsFilterDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleApplyFilter}>Apply Filters</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            {/* Export Dialog */}
+            <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Export Inventory Data</DialogTitle>
+                  <DialogDescription>
+                    Choose a format to export your inventory data.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="flex flex-col space-y-2">
+                    <Button variant="outline" onClick={() => handleExportData('csv')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as CSV
+                    </Button>
+                    <Button variant="outline" onClick={() => handleExportData('excel')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as Excel
+                    </Button>
+                    <Button variant="outline" onClick={() => handleExportData('pdf')}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export as PDF
+                    </Button>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>Cancel</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            {/* Add Item Dialog */}
+            <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Inventory Item</DialogTitle>
+                  <DialogDescription>
+                    Fill out the form below to add a new inventory item to your system.
+                  </DialogDescription>
+                </DialogHeader>
+                <UpdateInventoryForm 
+                  onSuccess={() => {
+                    setIsAddItemOpen(false);
+                    toast.success("Item added successfully");
+                  }}
+                  onCancel={() => setIsAddItemOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         
@@ -236,11 +355,21 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <LocationSearch onSearch={handleLocationSearch} className="md:col-span-2" />
           <div className="flex items-center justify-end space-x-2">
-            <Button variant="outline" size="sm" className="w-full md:w-auto">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full md:w-auto"
+              onClick={() => handleNavigate("/transfer?type=incoming")}
+            >
               <Truck className="h-4 w-4 mr-2" />
               Incoming
             </Button>
-            <Button variant="outline" size="sm" className="w-full md:w-auto">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full md:w-auto"
+              onClick={() => handleNavigate("/transfer?type=outgoing")}
+            >
               <ShoppingCart className="h-4 w-4 mr-2" />
               Outgoing
             </Button>
@@ -268,10 +397,10 @@ const Dashboard = () => {
               <div className="mt-2 text-xs text-muted-foreground flex justify-between">
                 <span>Shows total inventory items over time</span>
                 <div className="flex space-x-2">
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.info("Inventory chart data uploaded")}>
                     <Upload className="h-3 w-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.success("Inventory chart downloaded")}>
                     <Download className="h-3 w-3" />
                   </Button>
                 </div>
@@ -293,10 +422,10 @@ const Dashboard = () => {
               <div className="mt-2 text-xs text-muted-foreground flex justify-between">
                 <span>Incoming vs outgoing stock movement</span>
                 <div className="flex space-x-2">
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.info("Stock movement data uploaded")}>
                     <Upload className="h-3 w-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.success("Stock movement chart downloaded")}>
                     <Download className="h-3 w-3" />
                   </Button>
                 </div>
@@ -320,10 +449,10 @@ const Dashboard = () => {
               <div className="mt-2 text-xs text-muted-foreground flex justify-between">
                 <span>Shows inventory distribution by category</span>
                 <div className="flex space-x-2">
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.info("Category data uploaded")}>
                     <Upload className="h-3 w-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toast.success("Category chart downloaded")}>
                     <Download className="h-3 w-3" />
                   </Button>
                 </div>
@@ -334,6 +463,7 @@ const Dashboard = () => {
               alerts={alerts}
               onMarkAsRead={handleMarkAsRead}
               onClearAll={handleClearAllAlerts}
+              onClearAlert={handleClearAlert}
               className="animate-slide-up delay-300"
             />
           </div>
@@ -343,7 +473,12 @@ const Dashboard = () => {
         <div className="space-y-4 animate-slide-up delay-300">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold tracking-tight">Recent Inventory</h2>
-            <Button variant="link" size="sm" className="text-primary">
+            <Button 
+              variant="link" 
+              size="sm" 
+              className="text-primary"
+              onClick={() => handleNavigate("/inventory")}
+            >
               View All
             </Button>
           </div>
@@ -357,10 +492,10 @@ const Dashboard = () => {
               <InventoryTable />
             </TabsContent>
             <TabsContent value="low" className="mt-0">
-              <InventoryTable />
+              <InventoryTable filterBy="status" filterValue="Low Stock" />
             </TabsContent>
             <TabsContent value="recent" className="mt-0">
-              <InventoryTable />
+              <InventoryTable sortBy="dateAdded" sortDirection="desc" />
             </TabsContent>
           </Tabs>
         </div>
