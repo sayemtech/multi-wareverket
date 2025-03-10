@@ -1,5 +1,5 @@
-
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SecurityContextType {
   isUnlocked: boolean;
@@ -14,9 +14,10 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [isTimedOut, setIsTimedOut] = useState(false);
   const secretKeySequence = useRef<string[]>([]);
   const secretKey = "admin";
+  const { toast } = useToast();
   
   useEffect(() => {
-    // Set timeout after 5 seconds
+    // App is usable for 5 seconds after load, then locks
     const timeoutId = setTimeout(() => {
       if (!isUnlocked) {
         setIsTimedOut(true);
@@ -37,18 +38,21 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isUnlocked) return;
     
-    // Start tracking keys after timeout or after user clicks
+    // Only track keys after timeout (when app is locked)
     if (isTimedOut) {
       // Add the key to our sequence
       secretKeySequence.current.push(e.key);
+      console.log("Key pressed:", e.key); // Debug log
       
-      // Keep only the last N keys (where N is the length of the secret)
+      // Keep only the last 5 keys (length of "admin")
       if (secretKeySequence.current.length > secretKey.length) {
         secretKeySequence.current.shift();
       }
       
       // Check if the sequence matches the secret
       const enteredText = secretKeySequence.current.join("");
+      console.log("Current sequence:", enteredText); // Debug log
+      
       if (enteredText === secretKey) {
         unlockApp();
       }
@@ -60,27 +64,36 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setIsTimedOut(false);
     secretKeySequence.current = [];
     console.log("App unlocked!");
+    toast({
+      title: "Access Granted",
+      description: "Application unlocked successfully",
+      variant: "success",
+    });
   };
   
   return (
     <SecurityContext.Provider value={{ isUnlocked, unlockApp, handleKeyDown }}>
-      <div 
-        onClick={() => {
-          if (!isUnlocked && isTimedOut) {
+      {/* Invisible overlay that captures clicks and key presses */}
+      {!isUnlocked && isTimedOut && (
+        <div 
+          onClick={() => {
             console.log("App ready for password input");
-          }
-        }}
-        style={{ 
-          position: "fixed", 
-          top: 0, 
-          left: 0, 
-          width: "100%", 
-          height: "100%", 
-          zIndex: isUnlocked ? -1 : 9999,
-          pointerEvents: isUnlocked ? "none" : "auto",
-          cursor: isUnlocked ? "default" : "pointer"
-        }}
-      />
+          }}
+          style={{ 
+            position: "fixed", 
+            top: 0, 
+            left: 0, 
+            width: "100%", 
+            height: "100%", 
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.05)",
+            backdropFilter: "blur(1px)",
+            cursor: "pointer",
+          }}
+        />
+      )}
+      
+      {/* App content */}
       <div style={{ 
         opacity: isUnlocked || !isTimedOut ? 1 : 0.6, 
         pointerEvents: isUnlocked || !isTimedOut ? "auto" : "none",
