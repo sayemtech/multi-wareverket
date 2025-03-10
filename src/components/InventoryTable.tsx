@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   CheckCircle2, 
@@ -58,7 +57,14 @@ import {
   updateInventoryQuantity 
 } from "@/lib/data/inventoryData";
 
-export function InventoryTable() {
+interface InventoryTableProps {
+  filterBy?: string;
+  filterValue?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+}
+
+export function InventoryTable({ filterBy, filterValue, sortBy, sortDirection = 'asc' }: InventoryTableProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -75,9 +81,34 @@ export function InventoryTable() {
     // Load inventory data from localStorage
     loadInventoryData();
   }, []);
+
+  // Apply external filter if provided via props
+  useEffect(() => {
+    if (filterBy && filterValue) {
+      if (filterBy === 'status') {
+        setFilterStatus(filterValue);
+      } else if (filterBy === 'location') {
+        setFilterLocation(filterValue);
+      }
+    }
+  }, [filterBy, filterValue]);
   
   const loadInventoryData = () => {
-    const data = getInventoryItems();
+    let data = getInventoryItems();
+    
+    // Apply sorting if provided via props
+    if (sortBy) {
+      data = [...data].sort((a, b) => {
+        if (sortBy === 'dateAdded') {
+          const dateA = new Date(a.lastUpdated).getTime();
+          const dateB = new Date(b.lastUpdated).getTime();
+          return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+        // Add other sorting options as needed
+        return 0;
+      });
+    }
+    
     setInventoryData(data);
   };
   
