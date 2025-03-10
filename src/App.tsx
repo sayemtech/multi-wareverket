@@ -18,6 +18,7 @@ import AuditDetail from "./pages/AuditDetail";
 import MeetingRoom from "./pages/MeetingRoom";
 import NotFound from "./pages/NotFound";
 import { ChatProvider } from "./contexts/ChatContext";
+import { SecurityProvider } from "./contexts/SecurityContext";
 
 const queryClient = new QueryClient();
 
@@ -26,25 +27,27 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <ChatProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/products/:id" element={<SingleProduct />} />
-            <Route path="/locations" element={<Locations />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/vendors" element={<Vendors />} />
-            <Route path="/transfer" element={<Transfer />} />
-            <Route path="/audit" element={<Audit />} />
-            <Route path="/audit/:id" element={<AuditDetail />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/meeting/:id" element={<MeetingRoom />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </ChatProvider>
-      </BrowserRouter>
+      <SecurityProvider>
+        <BrowserRouter>
+          <ChatProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/products/:id" element={<SingleProduct />} />
+              <Route path="/locations" element={<Locations />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/vendors" element={<Vendors />} />
+              <Route path="/transfer" element={<Transfer />} />
+              <Route path="/audit" element={<Audit />} />
+              <Route path="/audit/:id" element={<AuditDetail />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/meeting/:id" element={<MeetingRoom />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ChatProvider>
+        </BrowserRouter>
+      </SecurityProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
