@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,7 +68,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     toast({
       title: "Access Granted",
       description: "Application unlocked successfully",
-      variant: "success",
+      variant: "default", // Changed from "success" to "default" to match allowed variants
     });
   };
   
