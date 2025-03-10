@@ -14,11 +14,12 @@ import {
   UserPlus, 
   Users, 
   Video, 
-  VideoOff 
+  VideoOff,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { 
   getMeetings, 
@@ -43,6 +54,8 @@ import {
   cancelMeeting, 
   joinMeeting,
   createRecurringMeeting,
+  updateMeeting,
+  deleteMeeting,
   Meeting 
 } from "@/lib/meetings";
 
@@ -62,10 +75,30 @@ const meetingFormSchema = z.object({
 export function MeetingsTabContent() {
   const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [deleteMeetingId, setDeleteMeetingId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   const form = useForm<z.infer<typeof meetingFormSchema>>({
+    resolver: zodResolver(meetingFormSchema),
+    defaultValues: {
+      title: "",
+      scheduledFor: "",
+      participants: "",
+      description: "",
+      duration: "60",
+      isRecurring: false,
+      recurringPattern: "weekly",
+      recordingEnabled: false,
+      waitingRoom: false,
+      password: "",
+    },
+  });
+
+  const editForm = useForm<z.infer<typeof meetingFormSchema>>({
     resolver: zodResolver(meetingFormSchema),
     defaultValues: {
       title: "",
@@ -123,6 +156,49 @@ export function MeetingsTabContent() {
     }
   };
 
+  // Handle edit meeting
+  const handleEditMeeting = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    
+    // Set form values
+    editForm.reset({
+      title: meeting.title,
+      scheduledFor: meeting.scheduledFor,
+      participants: meeting.participants.join(", "),
+      description: meeting.description || "",
+      duration: meeting.duration?.toString() || "60",
+      isRecurring: meeting.isRecurring || false,
+      recurringPattern: meeting.recurringPattern || "weekly",
+      recordingEnabled: meeting.recordingEnabled || false,
+      waitingRoom: meeting.hostControls?.waitingRoom || false,
+      password: meeting.password || "",
+    });
+    
+    setIsRecurring(meeting.isRecurring || false);
+    setIsPasswordProtected(!!meeting.password);
+    setIsEditDialogOpen(true);
+  };
+
+  // Handle delete meeting
+  const handleDeleteMeeting = (id: string) => {
+    setDeleteMeetingId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteMeeting = () => {
+    if (!deleteMeetingId) return;
+    
+    if (deleteMeeting(deleteMeetingId)) {
+      toast.success("Meeting deleted successfully");
+      setMeetings(getMeetings()); // Refresh list
+    } else {
+      toast.error("Failed to delete meeting");
+    }
+    
+    setIsDeleteDialogOpen(false);
+    setDeleteMeetingId(null);
+  };
+
   // Get status badge based on meeting status
   const getStatusBadge = (status: Meeting['status']) => {
     switch (status) {
@@ -139,7 +215,7 @@ export function MeetingsTabContent() {
     }
   };
 
-  // Handle form submission
+  // Handle form submission for creating a meeting
   const onSubmit = (data: z.infer<typeof meetingFormSchema>) => {
     try {
       // Parse participants
@@ -201,6 +277,53 @@ export function MeetingsTabContent() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to schedule meeting");
+    }
+  };
+
+  // Handle form submission for editing a meeting
+  const onEditSubmit = (data: z.infer<typeof meetingFormSchema>) => {
+    if (!selectedMeeting) return;
+    
+    try {
+      // Parse participants
+      const participants = data.participants
+        .split(",")
+        .map(email => email.trim())
+        .filter(email => email);
+      
+      // Update the meeting
+      const updatedMeeting = updateMeeting(selectedMeeting.id, {
+        title: data.title,
+        scheduledFor: data.scheduledFor,
+        participants,
+        description: data.description,
+        duration: parseInt(data.duration),
+        recordingEnabled: data.recordingEnabled,
+        isRecurring: data.isRecurring,
+        recurringPattern: data.isRecurring ? data.recurringPattern : undefined,
+        password: isPasswordProtected ? data.password : undefined,
+        hostControls: {
+          waitingRoom: data.waitingRoom,
+          ...selectedMeeting.hostControls
+        }
+      });
+      
+      if (updatedMeeting) {
+        toast.success("Meeting updated successfully");
+        
+        // Reset form and close dialog
+        editForm.reset();
+        setIsEditDialogOpen(false);
+        setSelectedMeeting(null);
+        
+        // Refresh meeting list
+        setMeetings(getMeetings());
+      } else {
+        toast.error("Failed to update meeting");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update meeting");
     }
   };
 
@@ -285,18 +408,41 @@ export function MeetingsTabContent() {
                               )}
                             </CardDescription>
                           </div>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Meeting options</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                          <div className="flex gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => handleEditMeeting(meeting)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Edit meeting</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => handleDeleteMeeting(meeting.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Delete meeting</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="p-4 pt-2">
@@ -321,6 +467,7 @@ export function MeetingsTabContent() {
                           variant="ghost"
                           size="sm"
                           className="gap-1 text-blue-600"
+                          onClick={() => handleEditMeeting(meeting)}
                         >
                           <Edit className="h-3.5 w-3.5" />
                           Edit
@@ -379,9 +526,15 @@ export function MeetingsTabContent() {
                               {formatMeetingDate(meeting.scheduledFor)}
                             </CardDescription>
                           </div>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => handleDeleteMeeting(meeting.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardFooter className="flex justify-end p-3">
@@ -413,7 +566,24 @@ export function MeetingsTabContent() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full">
+              <Button className="w-full" onClick={() => {
+                const meetingName = document.querySelector('input[placeholder="Meeting name (optional)"]') as HTMLInputElement;
+                const title = meetingName?.value || "Instant Meeting";
+                
+                const newMeeting = createMeeting({
+                  title,
+                  scheduledFor: new Date().toISOString(),
+                  createdBy: "Admin User",
+                  participants: [],
+                  duration: 60
+                });
+                
+                toast.success("Instant meeting created");
+                setMeetings(getMeetings());
+                
+                // Join the meeting immediately
+                joinMeeting(newMeeting.id);
+              }}>
                 <Video className="mr-2 h-4 w-4" />
                 Start Now
               </Button>
@@ -433,7 +603,33 @@ export function MeetingsTabContent() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={() => {
+                const meetingCode = document.querySelector('input[placeholder="Enter meeting code or URL"]') as HTMLInputElement;
+                const code = meetingCode?.value;
+                
+                if (!code) {
+                  toast.error("Please enter a meeting code or URL");
+                  return;
+                }
+                
+                // Extract meeting ID from code or URL
+                let meetingId = code;
+                
+                // If it's a URL, try to extract the ID from it
+                if (code.includes('meeting.example.com/')) {
+                  const parts = code.split('meeting.example.com/');
+                  if (parts.length > 1) {
+                    meetingId = parts[1].split(/[/?#]/)[0]; // Get the ID part
+                  }
+                }
+                
+                // Try to join the meeting
+                if (joinMeeting(meetingId)) {
+                  toast.success("Joining meeting...");
+                } else {
+                  toast.error("Invalid meeting code or URL");
+                }
+              }}>
                 Join Meeting
               </Button>
             </CardFooter>
@@ -446,11 +642,29 @@ export function MeetingsTabContent() {
                 <code className="rounded bg-muted px-2 py-1 text-sm">
                   123-456-789
                 </code>
-                <Button variant="ghost" size="sm" className="h-7 gap-1 px-2">
+                <Button variant="ghost" size="sm" className="h-7 gap-1 px-2" onClick={() => {
+                  navigator.clipboard.writeText("123-456-789");
+                  toast.success("Personal meeting ID copied to clipboard");
+                }}>
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                // Create meeting with personal meeting ID
+                const newMeeting = createMeeting({
+                  title: "Personal Meeting Room",
+                  scheduledFor: new Date().toISOString(),
+                  createdBy: "Admin User",
+                  participants: [],
+                  duration: 60
+                });
+                
+                toast.success("Personal meeting started");
+                setMeetings(getMeetings());
+                
+                // Join the meeting immediately
+                joinMeeting(newMeeting.id);
+              }}>
                 Start Meeting
               </Button>
             </CardContent>
@@ -690,6 +904,261 @@ export function MeetingsTabContent() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit meeting dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Meeting</DialogTitle>
+            <DialogDescription>
+              Update the details of your meeting
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Meeting Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Quarterly Team Review" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="scheduledFor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date and Time</FormLabel>
+                      <FormControl>
+                        <Input type="datetime-local" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select duration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="15">15 minutes</SelectItem>
+                          <SelectItem value="30">30 minutes</SelectItem>
+                          <SelectItem value="45">45 minutes</SelectItem>
+                          <SelectItem value="60">1 hour</SelectItem>
+                          <SelectItem value="90">1.5 hours</SelectItem>
+                          <SelectItem value="120">2 hours</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={editForm.control}
+                name="participants"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Participants</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="email1@example.com, email2@example.com" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Enter comma-separated email addresses
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Meeting agenda and details" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="edit-recurring" 
+                      checked={isRecurring}
+                      onCheckedChange={(checked) => {
+                        setIsRecurring(checked);
+                        editForm.setValue("isRecurring", checked);
+                      }}
+                    />
+                    <label htmlFor="edit-recurring" className="text-sm font-medium">
+                      Recurring meeting
+                    </label>
+                  </div>
+                  
+                  {isRecurring && (
+                    <FormField
+                      control={editForm.control}
+                      name="recurringPattern"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Select 
+                              onValueChange={field.onChange} 
+                              defaultValue={field.value}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <FormField
+                    control={editForm.control}
+                    name="recordingEnabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2">
+                        <FormControl>
+                          <Switch 
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-medium">
+                          Record meeting automatically
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <FormField
+                    control={editForm.control}
+                    name="waitingRoom"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2">
+                        <FormControl>
+                          <Switch 
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-medium">
+                          Enable waiting room
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch 
+                      id="edit-password-protected" 
+                      checked={isPasswordProtected}
+                      onCheckedChange={setIsPasswordProtected}
+                    />
+                    <label htmlFor="edit-password-protected" className="text-sm font-medium">
+                      Password protect
+                    </label>
+                  </div>
+                  
+                  {isPasswordProtected && (
+                    <FormField
+                      control={editForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input type="password" placeholder="Meeting password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setSelectedMeeting(null);
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit">Update Meeting</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the meeting and cancel it for all participants. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteMeetingId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={confirmDeleteMeeting}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

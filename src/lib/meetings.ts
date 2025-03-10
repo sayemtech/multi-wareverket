@@ -72,6 +72,43 @@ export const createMeeting = (meetingData: Omit<Meeting, "id" | "createdAt" | "s
   return newMeeting;
 };
 
+// Update a meeting's information
+export const updateMeeting = (id: string, updatedData: Partial<Omit<Meeting, "id" | "createdAt" | "joinUrl" | "chatRoomId">>): Meeting | undefined => {
+  const meetings = getMeetings();
+  const meetingIndex = meetings.findIndex(m => m.id === id);
+  
+  if (meetingIndex === -1) return undefined;
+  
+  // Preserve original data and merge with updates
+  const updatedMeeting = {
+    ...meetings[meetingIndex],
+    ...updatedData,
+    // Ensure these fields aren't overwritten
+    id: meetings[meetingIndex].id,
+    createdAt: meetings[meetingIndex].createdAt,
+    joinUrl: meetings[meetingIndex].joinUrl,
+    chatRoomId: meetings[meetingIndex].chatRoomId
+  };
+  
+  meetings[meetingIndex] = updatedMeeting;
+  setLocalStorageData(MEETINGS_STORAGE_KEY, meetings);
+  
+  return updatedMeeting;
+};
+
+// Delete a meeting
+export const deleteMeeting = (id: string): boolean => {
+  const meetings = getMeetings();
+  const filteredMeetings = meetings.filter(meeting => meeting.id !== id);
+  
+  if (filteredMeetings.length === meetings.length) {
+    return false; // No meeting was deleted
+  }
+  
+  setLocalStorageData(MEETINGS_STORAGE_KEY, filteredMeetings);
+  return true;
+};
+
 // Update a meeting's status
 export const updateMeetingStatus = (id: string, status: Meeting['status']): Meeting | undefined => {
   const meetings = getMeetings();
