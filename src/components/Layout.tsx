@@ -16,7 +16,11 @@ import {
   LogOut,
   ClipboardCheck,
   ShoppingBag,
-  Users
+  Users,
+  Shield,
+  Lock,
+  History,
+  UserCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,6 +53,10 @@ const navItems = [
   { name: "Reports", path: "/reports", icon: FileText },
   { name: "Vendors", path: "/vendors", icon: Truck },
   { name: "Settings", path: "/settings", icon: Settings },
+  { name: "Security Settings", path: "/security", icon: Shield },
+  { name: "Security Roles", path: "/security/roles", icon: UserCog },
+  { name: "Security Audit", path: "/security/audit", icon: Lock },
+  { name: "Access Log", path: "/access-log", icon: History },
 ];
 
 export default function Layout({ children }: LayoutProps) {
