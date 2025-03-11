@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { 
@@ -15,7 +14,9 @@ import {
   FileText,
   Truck,
   LogOut,
-  ClipboardCheck
+  ClipboardCheck,
+  ShoppingBag,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ const navItems = [
   { name: "Dashboard", path: "/", icon: BarChart3 },
   { name: "Inventory", path: "/inventory", icon: Boxes },
   { name: "Products", path: "/products", icon: Package },
+  { name: "Sales", path: "/sales", icon: ShoppingBag },
+  { name: "Customers", path: "/customers", icon: Users },
   { name: "Locations", path: "/locations", icon: Map },
   { name: "Transfer", path: "/transfer", icon: Truck },
   { name: "Audit", path: "/audit", icon: ClipboardCheck },
@@ -54,17 +57,14 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { toast } = useToast();
   
-  // Refresh notifications whenever the component renders
   useEffect(() => {
     setNotifications(getAlerts());
   }, []);
   
-  // Close sidebar on mobile when navigating
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
   
-  // For demonstration purposes - show notification
   useEffect(() => {
     const timer = setTimeout(() => {
       toast({
@@ -96,7 +96,6 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex w-full bg-background">
-      {/* Sidebar (mobile overlay) */}
       <div 
         className={cn(
           "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm transition-opacity lg:hidden",
@@ -105,7 +104,6 @@ export default function Layout({ children }: LayoutProps) {
         onClick={() => setSidebarOpen(false)}
       />
       
-      {/* Sidebar */}
       <aside 
         className={cn(
           "fixed top-0 left-0 z-50 h-full w-64 lg:w-72 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0",
@@ -113,7 +111,6 @@ export default function Layout({ children }: LayoutProps) {
         )}
       >
         <div className="h-full flex flex-col">
-          {/* Logo */}
           <div className="h-16 flex items-center px-6 border-b border-border">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
@@ -131,7 +128,6 @@ export default function Layout({ children }: LayoutProps) {
             </Button>
           </div>
           
-          {/* Nav links */}
           <nav className="flex-1 py-6 px-4 overflow-y-auto">
             <ul className="space-y-1">
               {navItems.map((item) => (
@@ -155,7 +151,6 @@ export default function Layout({ children }: LayoutProps) {
             </ul>
           </nav>
           
-          {/* User profile */}
           <div className="p-4 border-t border-border">
             <div className="flex items-center">
               <Avatar>
@@ -171,9 +166,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </aside>
       
-      {/* Main content */}
       <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        {/* Header */}
         <header className="h-16 border-b border-border flex items-center px-4 sm:px-6 sticky top-0 z-30 bg-background/80 backdrop-blur">
           <Button 
             variant="ghost" 
@@ -184,7 +177,6 @@ export default function Layout({ children }: LayoutProps) {
             <Menu className="h-5 w-5" />
           </Button>
           
-          {/* Search */}
           <div className="ml-4 lg:ml-0 relative w-full max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -194,9 +186,7 @@ export default function Layout({ children }: LayoutProps) {
             />
           </div>
           
-          {/* Right side actions */}
           <div className="ml-auto flex items-center space-x-1">
-            {/* Notifications Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative text-muted-foreground">
@@ -261,7 +251,6 @@ export default function Layout({ children }: LayoutProps) {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            {/* User Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-muted-foreground">
@@ -286,7 +275,6 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </header>
         
-        {/* Page content */}
         <div className="flex-1 overflow-auto">
           <div className="animate-fade-in">
             {children}

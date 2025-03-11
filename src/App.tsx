@@ -15,6 +15,8 @@ import Settings from "./pages/Settings";
 import Transfer from "./pages/Transfer";
 import Audit from "./pages/Audit";
 import AuditDetail from "./pages/AuditDetail";
+import Sales from "./pages/Sales";
+import Customers from "./pages/Customers";
 import MeetingRoom from "./pages/MeetingRoom";
 import SecuritySettings from "./pages/SecuritySettings";
 import SecurityRoles from "./pages/SecurityRoles";
@@ -45,6 +47,8 @@ const App = () => (
               <Route path="/transfer" element={<Transfer />} />
               <Route path="/audit" element={<Audit />} />
               <Route path="/audit/:id" element={<AuditDetail />} />
+              <Route path="/sales" element={<Sales />} />
+              <Route path="/customers" element={<Customers />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/security" element={<SecuritySettings />} />
               <Route path="/security/roles" element={<SecurityRoles />} />
