@@ -16,6 +16,8 @@ import Transfer from "./pages/Transfer";
 import Audit from "./pages/Audit";
 import AuditDetail from "./pages/AuditDetail";
 import MeetingRoom from "./pages/MeetingRoom";
+import SecuritySettings from "./pages/SecuritySettings";
+import AccessLog from "./pages/AccessLog";
 import NotFound from "./pages/NotFound";
 import { ChatProvider } from "./contexts/ChatContext";
 import { SecurityProvider } from "./contexts/SecurityContext";
@@ -42,6 +44,8 @@ const App = () => (
               <Route path="/audit" element={<Audit />} />
               <Route path="/audit/:id" element={<AuditDetail />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/security" element={<SecuritySettings />} />
+              <Route path="/access-log" element={<AccessLog />} />
               <Route path="/meeting/:id" element={<MeetingRoom />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
