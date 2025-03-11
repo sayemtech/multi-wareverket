@@ -68,8 +68,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setIsListening(false);
     setKeySequence('');
     toast("App unlocked", {
-      description: "The application is now fully functional",
-      variant: "default"
+      description: "The application is now fully functional"
     });
   }, []);
   
