@@ -1,24 +1,25 @@
 
 import { getLocalStorageData, setLocalStorageData } from "../localStorage";
-import { getProductById } from "./productsData";
-import { getCustomerById } from "./customersData";
-
-export interface SaleItem {
-  productId: string;
-  quantity: number;
-  unitPrice: number;
-}
 
 export interface Sale {
   id: string;
   customerId: string;
+  customerName: string;
+  date: string;
   items: SaleItem[];
-  totalAmount: number;
-  status: "pending" | "completed" | "cancelled";
-  paymentMethod?: string;
+  total: number;
+  paymentStatus: "paid" | "pending" | "overdue";
+  paymentMethod: "cash" | "credit_card" | "bank_transfer" | "other";
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+}
+
+export interface SaleItem {
+  id: string;
+  productId: string;
+  name: string;
+  quantity: number;
+  price: number;
+  total: number;
 }
 
 const SALES_STORAGE_KEY = "sales";
@@ -28,40 +29,76 @@ const initialSalesData: Sale[] = [
   {
     id: "1",
     customerId: "1",
+    customerName: "John Smith",
+    date: "2023-09-15",
     items: [
-      { productId: "1", quantity: 2, unitPrice: 129.99 },
-      { productId: "2", quantity: 1, unitPrice: 19.99 }
+      {
+        id: "item1",
+        productId: "prod1",
+        name: "Wireless Headphones",
+        quantity: 2,
+        price: 79.99,
+        total: 159.98
+      },
+      {
+        id: "item2",
+        productId: "prod2",
+        name: "Bluetooth Speaker",
+        quantity: 1,
+        price: 129.99,
+        total: 129.99
+      }
     ],
-    totalAmount: 279.97,
-    status: "completed",
-    paymentMethod: "Credit Card",
-    createdAt: "2023-05-10",
-    updatedAt: "2023-05-10"
+    total: 289.97,
+    paymentStatus: "paid",
+    paymentMethod: "credit_card"
   },
   {
     id: "2",
     customerId: "2",
+    customerName: "Sarah Johnson",
+    date: "2023-09-20",
     items: [
-      { productId: "3", quantity: 1, unitPrice: 79.99 }
+      {
+        id: "item3",
+        productId: "prod3",
+        name: "USB-C Cable 2m",
+        quantity: 5,
+        price: 12.99,
+        total: 64.95
+      }
     ],
-    totalAmount: 79.99,
-    status: "completed",
-    paymentMethod: "PayPal",
-    createdAt: "2023-05-15",
-    updatedAt: "2023-05-15"
+    total: 64.95,
+    paymentStatus: "pending",
+    paymentMethod: "bank_transfer",
+    notes: "Waiting for payment confirmation"
   },
   {
     id: "3",
     customerId: "3",
+    customerName: "Michael Chen",
+    date: "2023-09-25",
     items: [
-      { productId: "2", quantity: 3, unitPrice: 19.99 }
+      {
+        id: "item4",
+        productId: "prod4",
+        name: "Smart Watch",
+        quantity: 1,
+        price: 249.99,
+        total: 249.99
+      },
+      {
+        id: "item5",
+        productId: "prod5",
+        name: "Wireless Charger",
+        quantity: 2,
+        price: 34.99,
+        total: 69.98
+      }
     ],
-    totalAmount: 59.97,
-    status: "pending",
-    paymentMethod: "Bank Transfer",
-    notes: "Awaiting payment confirmation",
-    createdAt: "2023-05-20",
-    updatedAt: "2023-05-20"
+    total: 319.97,
+    paymentStatus: "paid",
+    paymentMethod: "cash"
   }
 ];
 
@@ -76,15 +113,12 @@ export function saveSales(sales: Sale[]): void {
 }
 
 // Add a new sale
-export function addSale(sale: Omit<Sale, "id" | "createdAt" | "updatedAt">): Sale {
+export function addSale(sale: Omit<Sale, "id">): Sale {
   const sales = getSales();
-  const now = new Date().toISOString().split('T')[0];
   
   const newSale: Sale = {
     ...sale,
-    id: Date.now().toString(),
-    createdAt: now,
-    updatedAt: now
+    id: Date.now().toString()
   };
   
   sales.push(newSale);
@@ -93,7 +127,7 @@ export function addSale(sale: Omit<Sale, "id" | "createdAt" | "updatedAt">): Sal
 }
 
 // Update an existing sale
-export function updateSale(id: string, updates: Partial<Omit<Sale, "id" | "createdAt" | "updatedAt">>): Sale | null {
+export function updateSale(id: string, updates: Partial<Omit<Sale, "id">>): Sale | null {
   const sales = getSales();
   const index = sales.findIndex(s => s.id === id);
   
@@ -101,8 +135,7 @@ export function updateSale(id: string, updates: Partial<Omit<Sale, "id" | "creat
   
   const updatedSale = {
     ...sales[index],
-    ...updates,
-    updatedAt: new Date().toISOString().split('T')[0]
+    ...updates
   };
   
   sales[index] = updatedSale;
@@ -127,25 +160,44 @@ export function getSaleById(id: string): Sale | undefined {
   return sales.find(s => s.id === id);
 }
 
-// Get sales enriched with product and customer data
-export function getEnrichedSales() {
+// Calculate total sales over a period
+export function calculateTotalSales(startDate?: string, endDate?: string): number {
   const sales = getSales();
   
-  return sales.map(sale => {
-    const customer = getCustomerById(sale.customerId);
-    const enrichedItems = sale.items.map(item => {
-      const product = getProductById(item.productId);
-      return {
-        ...item,
-        productName: product?.name || "Unknown Product",
-        productSku: product?.sku || "N/A"
-      };
-    });
-    
-    return {
-      ...sale,
-      customer: customer?.name || "Unknown Customer",
-      items: enrichedItems
-    };
+  // If no dates provided, return total of all sales
+  if (!startDate && !endDate) {
+    return sales.reduce((total, sale) => total + sale.total, 0);
+  }
+  
+  // Filter sales by date range
+  const filteredSales = sales.filter(sale => {
+    const saleDate = new Date(sale.date);
+    if (startDate && new Date(startDate) > saleDate) return false;
+    if (endDate && new Date(endDate) < saleDate) return false;
+    return true;
   });
+  
+  return filteredSales.reduce((total, sale) => total + sale.total, 0);
+}
+
+// Get sales by customer ID
+export function getSalesByCustomer(customerId: string): Sale[] {
+  const sales = getSales();
+  return sales.filter(sale => sale.customerId === customerId);
+}
+
+// Get sales by status
+export function getSalesByStatus(status: Sale["paymentStatus"]): Sale[] {
+  const sales = getSales();
+  return sales.filter(sale => sale.paymentStatus === status);
+}
+
+// Get recent sales (default to last 30 days)
+export function getRecentSales(days = 30): Sale[] {
+  const sales = getSales();
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+  
+  return sales.filter(sale => new Date(sale.date) >= cutoffDate)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
